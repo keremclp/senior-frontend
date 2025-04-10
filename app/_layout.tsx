@@ -30,7 +30,21 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       />
-      {/* Additional protected routes would go here */}
+      
+      {/* CV Upload Module */}
+      <Stack.Screen name="cv/upload" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="cv/review" options={{ animation: 'slide_from_right' }} />
+      
+      {/* Advisor Matching Module */}
+      <Stack.Screen name="advisors/index" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="advisors/[id]" options={{ animation: 'slide_from_right' }} />
+      
+      {/* Feedback Module */}
+      <Stack.Screen name="feedback/index" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="feedback/thank-you" options={{ animation: 'slide_from_bottom' }} />
+      
+      {/* User profile */}
+      <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

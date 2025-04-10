@@ -8,15 +8,16 @@ const ActionSection = () => {
   
   const handleUploadResume = () => {
     console.log('Upload Resume button pressed');
-    Alert.alert(
-      'Coming Soon',
-      'Resume upload functionality will be available soon!',
-      [{ text: 'OK' }]
-    );
+    // Alert.alert(
+    //   'Coming Soon',
+    //   'Resume upload functionality will be available soon!',
+    //   [{ text: 'OK' }]
+    // );
+    router.push('/cv/upload');
   };
   
   const handleViewAdvisors = () => {
-    router.push('/advisors');
+    // router.push('/advisors');
   };
 
   return (

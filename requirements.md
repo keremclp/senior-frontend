@@ -109,7 +109,7 @@ An AI-powered mobile application that helps university students match with the m
 ## 5️⃣ Navigation & Context Setup
 ### 📌 Technologies:
 - `@react-navigation/native`
-- Context API (or Redux if needed)
+- Context API
 
 ### 💬 Cursor Prompts:
 ```
