@@ -17,7 +17,11 @@ const ActionSection = () => {
   };
   
   const handleViewAdvisors = () => {
-    // router.push('/advisors');
+    Alert.alert(
+      'Coming Soon',
+      'Advisor viewing functionality will be available soon!',
+      [{ text: 'OK' }]
+    );
   };
 
   return (

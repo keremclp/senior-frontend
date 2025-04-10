@@ -57,7 +57,7 @@ const LoginScreen = () => {
     
     try {
       await login(email, password);
-      router.replace('/');
+      router.replace('/home');
     } catch (error) {
       Alert.alert(
         'Login Failed', 

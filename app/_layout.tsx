@@ -31,6 +31,15 @@ function RootLayoutNav() {
         }}
       />
       
+      {/* Home screen */}
+      <Stack.Screen 
+        name="home/index"
+        options={{ 
+          headerShown: false,
+          animation: 'fade',
+        }}
+      />
+      
       {/* CV Upload Module */}
       <Stack.Screen name="cv/upload" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="cv/review" options={{ animation: 'slide_from_right' }} />
