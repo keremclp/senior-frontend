@@ -15,6 +15,7 @@ type AuthContextType = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  setUserDirectly: (userData: User) => Promise<void>; // New function to set user directly
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,6 +45,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     loadUser();
   }, []);
+
+  // New function to set user directly without login process
+  const setUserDirectly = async (userData: User) => {
+    setIsLoading(true);
+    try {
+      const mockToken = 'mock-jwt-token';
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('auth_token', mockToken);
+      await AsyncStorage.setItem('auth_user', JSON.stringify(userData));
+      
+      setUser(userData);
+      setToken(mockToken);
+    } catch (error) {
+      console.error('Setting user failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -136,7 +157,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       register, 
       logout,
-      resetPassword 
+      resetPassword,
+      setUserDirectly 
     }}>
       {children}
     </AuthContext.Provider>

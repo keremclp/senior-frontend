@@ -3,13 +3,18 @@ import { View, Text, Image, FlatList, Dimensions, SafeAreaView } from 'react-nat
 import { useRouter } from 'expo-router';
 import Button from './components/ui/Button';
 
+// Import images directly
+const advisorImage = require('../assets/images/advisor.png');
+const resumeImage = require('../assets/images/resume.png');
+const advisorListImage = require('../assets/images/advisor-list.png');
+
 const { width } = Dimensions.get('window');
 
 type OnboardingSlide = {
   id: string;
   title: string;
   description: string;
-  image: string;
+  image: any; // Changed to accept image reference
 };
 
 const slides: OnboardingSlide[] = [
@@ -17,19 +22,19 @@ const slides: OnboardingSlide[] = [
     id: '1',
     title: 'Find Your Perfect Advisor',
     description: 'Connect with academic advisors who match your interests, skills, and career goals.',
-    image: 'https://placehold.co/600x400/374151/FFFFFF?text=Advisor+Matching',
+    image: advisorImage,
   },
   {
     id: '2',
     title: 'Upload Your Resume',
     description: 'Our AI analyzes your resume to identify your strengths and interests.',
-    image: 'https://placehold.co/600x400/374151/FFFFFF?text=Resume+Upload',
+    image: resumeImage,
   },
   {
     id: '3',
     title: 'Get Personalized Matches',
     description: 'Receive personalized advisor recommendations based on your unique profile.',
-    image: 'https://placehold.co/600x400/374151/FFFFFF?text=AI+Matching',
+    image: advisorListImage,
   },
 ];
 
@@ -40,7 +45,7 @@ export default function Onboarding() {
   const renderItem = ({ item }: { item: OnboardingSlide }) => (
     <View style={{ width }} className="items-center justify-center px-4">
       <Image
-        source={{ uri: item.image }}
+        source={item.image} // Now using the image reference directly
         className="w-full rounded-xl mb-8"
         style={{ height: 250 }}
         resizeMode="cover"
