@@ -9,5 +9,5 @@ export default function Index() {
   if (isLoading) return null;
   
   // Redirect to login if not authenticated, otherwise to home
-  return <Redirect href={user ? "/home" : "/auth/login"} />;
+  return <Redirect href={user ? "/onboarding" : "/auth/login"} />;
 }

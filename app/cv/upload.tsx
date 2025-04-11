@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import Button from '../components/ui/Button';
+import Header from '../components/ui/Header';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function UploadCVScreen() {
@@ -61,19 +62,10 @@ export default function UploadCVScreen() {
   };
   
   return (
-    <SafeAreaView className="flex-1 bg-primary">
+    <SafeAreaView className="flex-1 bg-primary" style={{ paddingTop: 0 }}>
+      <Header title="Upload Resume" subtitle="Upload your CV for analysis" />
+      
       <View className="p-4">
-        <View className="flex-row items-center mb-6">
-          <Button
-            title=""
-            onPress={() => router.back()}
-            icon="arrow-back"
-            variant="secondary"
-            style={{ width: 44, height: 44, borderRadius: 22 }}
-          />
-          <Text className="text-light-100 text-2xl font-bold ml-4">Upload Resume</Text>
-        </View>
-        
         <Text className="text-light-300 mb-6">
           Upload your resume (PDF or DOCX) and our AI will analyze it to match you with suitable advisors.
         </Text>
