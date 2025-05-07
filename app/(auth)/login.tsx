@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/auth-context";
+import { validateEmail, validatePassword } from "@/lib/utils/validation";
 import * as Haptics from 'expo-haptics';
 import { Link } from "expo-router";
 import { useState } from "react";
@@ -13,33 +14,23 @@ export default function LoginScreen() {
   
   const { login, isLoading, error } = useAuth();
   
-  const validateEmail = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    }
-    setEmailError("");
-    return true;
+  const handleValidateEmail = () => {
+    const error = validateEmail(email);
+    setEmailError(error);
+    return !error;
   };
   
-  const validatePassword = () => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return false;
-    }
-    setPasswordError("");
-    return true;
+  const handleValidatePassword = () => {
+    const error = validatePassword(password);
+    setPasswordError(error);
+    return !error;
   };
   
   const handleLogin = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    const isEmailValid = validateEmail();
-    const isPasswordValid = validatePassword();
+    const isEmailValid = handleValidateEmail();
+    const isPasswordValid = handleValidatePassword();
     
     if (isEmailValid && isPasswordValid) {
       await login({ email, password });

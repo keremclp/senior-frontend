@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/auth-context";
+import { getPasswordStrength, getStrengthColor, getStrengthText, validateConfirmPassword, validateEmail, validateName, validatePassword } from "@/lib/utils/validation";
 import * as Haptics from 'expo-haptics';
 import { Link } from "expo-router";
 import { useState } from "react";
@@ -17,58 +18,39 @@ export default function RegisterScreen() {
   
   const { register, isLoading, error } = useAuth();
   
-  // Validation functions
-  const validateName = () => {
-    if (!name.trim()) {
-      setNameError("Name is required");
-      return false;
-    }
-    setNameError("");
-    return true;
+  // Validation handlers
+  const handleValidateName = () => {
+    const error = validateName(name);
+    setNameError(error);
+    return !error;
   };
   
-  const validateEmail = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    }
-    setEmailError("");
-    return true;
+  const handleValidateEmail = () => {
+    const error = validateEmail(email);
+    setEmailError(error);
+    return !error;
   };
   
-  const validatePassword = () => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return false;
-    } else if (password.length < 8) {
-      setPasswordError("Password must be at least 8 characters long");
-      return false;
-    }
-    setPasswordError("");
-    return true;
+  const handleValidatePassword = () => {
+    const error = validatePassword(password, true);
+    setPasswordError(error);
+    return !error;
   };
   
-  const validateConfirmPassword = () => {
-    if (password !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match");
-      return false;
-    }
-    setConfirmPasswordError("");
-    return true;
+  const handleValidateConfirmPassword = () => {
+    const error = validateConfirmPassword(password, confirmPassword);
+    setConfirmPasswordError(error);
+    return !error;
   };
   
   const handleRegister = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     // Validate all fields
-    const isNameValid = validateName();
-    const isEmailValid = validateEmail();
-    const isPasswordValid = validatePassword();
-    const isConfirmPasswordValid = validateConfirmPassword();
+    const isNameValid = handleValidateName();
+    const isEmailValid = handleValidateEmail();
+    const isPasswordValid = handleValidatePassword();
+    const isConfirmPasswordValid = handleValidateConfirmPassword();
     
     if (
       isNameValid &&
@@ -84,49 +66,7 @@ export default function RegisterScreen() {
     }
   };
   
-  // Password strength indicator
-  const getPasswordStrength = () => {
-    if (!password) return 0;
-    
-    let strength = 0;
-    
-    // Length check
-    if (password.length >= 8) strength += 1;
-    
-    // Character variety checks
-    if (/[A-Z]/.test(password)) strength += 1;
-    if (/[a-z]/.test(password)) strength += 1;
-    if (/[0-9]/.test(password)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    
-    return strength;
-  };
-  
-  const passwordStrength = getPasswordStrength();
-  
-  const getStrengthText = () => {
-    switch (passwordStrength) {
-      case 0: return "";
-      case 1: return "Weak";
-      case 2: return "Fair";
-      case 3: return "Good";
-      case 4: return "Strong";
-      case 5: return "Very Strong";
-      default: return "";
-    }
-  };
-  
-  const getStrengthColor = () => {
-    switch (passwordStrength) {
-      case 0: return "bg-gray-300";
-      case 1: return "bg-red-500";
-      case 2: return "bg-orange-500";
-      case 3: return "bg-yellow-500";
-      case 4: return "bg-green-500";
-      case 5: return "bg-green-600";
-      default: return "bg-gray-300";
-    }
-  };
+  const passwordStrength = getPasswordStrength(password);
   
   return (
     <KeyboardAvoidingView
@@ -153,7 +93,7 @@ export default function RegisterScreen() {
                 placeholder="Full Name"
                 value={name}
                 onChangeText={setName}
-                onBlur={validateName}
+                onBlur={handleValidateName}
               />
               {nameError ? <Text className="text-red-500 text-sm mt-1">{nameError}</Text> : null}
             </View>
@@ -164,7 +104,7 @@ export default function RegisterScreen() {
                 placeholder="Email"
                 value={email}
                 onChangeText={setEmail}
-                onBlur={validateEmail}
+                onBlur={handleValidateEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
@@ -177,7 +117,7 @@ export default function RegisterScreen() {
                 placeholder="Password"
                 value={password}
                 onChangeText={setPassword}
-                onBlur={validatePassword}
+                onBlur={handleValidatePassword}
                 secureTextEntry
               />
               {passwordError ? (
@@ -190,12 +130,12 @@ export default function RegisterScreen() {
                       passwordStrength < 3 ? 'text-red-500' : 
                       passwordStrength < 4 ? 'text-yellow-500' : 'text-green-500'
                     }`}>
-                      {getStrengthText()}
+                      {getStrengthText(passwordStrength)}
                     </Text>
                   </View>
                   <View className="h-1.5 w-full bg-gray-200 rounded-full">
                     <View 
-                      className={`h-1.5 rounded-full ${getStrengthColor()}`}
+                      className={`h-1.5 rounded-full ${getStrengthColor(passwordStrength)}`}
                       style={{ width: `${(passwordStrength / 5) * 100}%` }}
                     />
                   </View>
@@ -209,7 +149,7 @@ export default function RegisterScreen() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                onBlur={validateConfirmPassword}
+                onBlur={handleValidateConfirmPassword}
                 secureTextEntry
               />
               {confirmPasswordError ? <Text className="text-red-500 text-sm mt-1">{confirmPasswordError}</Text> : null}
