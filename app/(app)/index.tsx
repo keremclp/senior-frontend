@@ -1,14 +1,28 @@
+import HeaderUserDropdown from "@/components/header/HeaderUserDropdown";
 import { useAuth } from "@/context/auth-context";
 import { Link } from "expo-router";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function HomeScreen() {
   const { user } = useAuth();
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
-      <View className="p-6">
-        <View className="bg-primary rounded-lg p-6 mb-6">
+      {/* Enhanced Header Section */}
+      <View className="bg-primary p-6">
+        <View className="flex-row justify-between items-center mb-4">
+          <View className="flex-row items-center">
+            <Image 
+              source={require('@/assets/images/react-logo.png')} 
+              className="w-8 h-8 rounded-full mr-2"
+              style={{ resizeMode: 'contain' }}
+            />
+            <Text className="text-white text-xl font-bold">ResumeMatch</Text>
+          </View>
+          <HeaderUserDropdown user={user} />
+        </View>
+        
+        <View className="mt-2">
           <Text className="text-white text-2xl font-bold mb-2">
             Welcome, {user?.name}
           </Text>
@@ -16,7 +30,9 @@ export default function HomeScreen() {
             Use this dashboard to manage your resumes and view advisor matches.
           </Text>
         </View>
+      </View>
 
+      <View className="p-6">
         <View className="bg-white rounded-lg p-6 shadow-sm mb-6">
           <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
           
