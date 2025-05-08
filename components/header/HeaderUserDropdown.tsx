@@ -1,8 +1,8 @@
 import { useAuth } from '@/context/auth-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, Modal, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { Image, Modal, Text, TouchableOpacity, View, Dimensions } from 'react-native';
 
 interface HeaderUserDropdownProps {
   user: {
@@ -15,12 +15,30 @@ interface HeaderUserDropdownProps {
 export default function HeaderUserDropdown({ user }: HeaderUserDropdownProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const { logout } = useAuth();
+  const buttonRef = useRef<TouchableOpacity>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  
+  const handleToggleDropdown = () => {
+    if (!showDropdown && buttonRef.current) {
+      buttonRef.current.measure((x, y, width, height, pageX, pageY) => {
+        setDropdownPosition({
+          // Move dropdown 10px higher by subtracting from top position
+          top: pageY + height - 30,
+          right: Dimensions.get('window').width - (pageX + width),
+        });
+        setShowDropdown(true);
+      });
+    } else {
+      setShowDropdown(false);
+    }
+  };
 
   return (
     <View>
       <TouchableOpacity 
+        ref={buttonRef}
         className="flex-row items-center" 
-        onPress={() => setShowDropdown(!showDropdown)}
+        onPress={handleToggleDropdown}
       >
         <View className="w-8 h-8 bg-white rounded-full mr-2 items-center justify-center overflow-hidden">
           {user?.avatar ? (
@@ -43,7 +61,19 @@ export default function HeaderUserDropdown({ user }: HeaderUserDropdownProps) {
           activeOpacity={1} 
           onPress={() => setShowDropdown(false)}
         >
-          <View className="absolute top-16 right-6 bg-white rounded-lg shadow-lg overflow-hidden">
+          <View style={{
+            position: 'absolute',
+            top: dropdownPosition.top,
+            right: dropdownPosition.right,
+            backgroundColor: 'white',
+            borderRadius: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+            overflow: 'hidden'
+          }}>
             <View className="p-4 bg-gray-50 border-b border-gray-100">
               <Text className="font-bold">{user?.name}</Text>
               <Text className="text-gray-500 text-sm">{user?.email}</Text>
