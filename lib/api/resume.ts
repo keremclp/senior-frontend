@@ -26,12 +26,16 @@ export const resumeApi = {
   uploadResume: async (data: ResumeUploadData): Promise<{ message: string; resume: Resume }> => {
     const formData = new FormData();
     
-    // Add the file from data.resume
-    Object.keys(data).forEach(key => {
-      if (key !== 'resume') {
-        formData.append(key, data[key as keyof ResumeUploadData] as string);
-      }
-    });
+    // Add file from data.resume (assuming it's already FormData with a file)
+    const resumeFile = data.resume.get('resume') as Blob;
+    formData.append('resume', resumeFile);
+    
+    // Add other fields
+    if (data.title) {
+      formData.append('title', data.title);
+    }
+    formData.append('university', data.university);
+    formData.append('engineeringField', data.engineeringField);
     
     // Special headers for file upload
     const config = {

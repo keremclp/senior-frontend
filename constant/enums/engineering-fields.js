@@ -1,0 +1,31 @@
+const ENGINEERING_DISCIPLINES = {
+  BIOMEDICAL_ENGINEERING: "Biomedical Engineering",
+  SOFTWARE_ENGINEERING: "Software Engineering",
+  MECHANICAL_ENGINEERING: "Mechanical Engineering",
+  EARTH_SCIENCES_ENGINEERING: "Earth Sciences and Engineering",
+  ELECTRICAL_ELECTRONICS_COMMUNICATION_ENGINEERING: "Electrical-Electronic and Communication Engineering",
+  MECHATRONICS_ENGINEERING: "Mechatronics Engineering",
+  ATMOSPHERIC_METEOROLOGY_ENGINEERING: "Atmospheric Sciences and Meteorology Engineering",
+  ELECTRICAL_ELECTRONICS_ENGINEERING: "Electrical-Electronics Engineering",
+  NUCLEAR_ENGINEERING: "Nuclear Engineering",
+  HEALTH_INFORMATICS: "Health Informatics",
+  TEXTILE_SCIENCES_ENGINEERING: "Textile Sciences and Engineering",
+  MARINE_SHIP_ENGINEERING: "Marine and Ship Engineering",
+  AUTOMOTIVE_ENGINEERING: "Automotive Engineering",
+  ENERGY_SYSTEMS_ENGINEERING: "Energy Systems Engineering",
+  MAPPING_ENGINEERING: "Mapping Engineering",
+  ENVIRONMENTAL_SCIENCES_ENGINEERING: "Environmental Sciences and Engineering",
+  PETROLEUM_ENGINEERING: "Petroleum Engineering",
+  CIVIL_ENGINEERING: "Civil Engineering",
+  MINING_ENGINEERING: "Mining Engineering",
+  FOOD_SCIENCES_ENGINEERING: "Food Sciences and Engineering",
+  AEROSPACE_ENGINEERING: "Aerospace Engineering",
+  BIOENGINEERING: "Bioengineering",
+  LOGISTICS_ENGINEERING: "Logistics Engineering",
+  CHEMICAL_ENGINEERING: "Chemical Engineering",
+  MATERIALS_METALLURGY_ENGINEERING: "Materials and Metallurgical Engineering",
+  COMPUTER_SCIENCE_ENGINEERING: "Computer Science and Engineering",
+  INDUSTRIAL_ENGINEERING: "Industrial Engineering"
+}
+
+module.exports = ENGINEERING_DISCIPLINES

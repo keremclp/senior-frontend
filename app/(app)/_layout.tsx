@@ -56,6 +56,16 @@ export default function AppLayout() {
           headerTitle: "My Resumes",
         }}
       />
+      <Tabs.Screen 
+        name="resume/upload" 
+        options={{
+          title: "Upload Resume",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="upload" size={size} color={color} />
+          ),
+          headerTitle: "Upload Resume",
+        }}
+      />
       <Tabs.Screen
         name="matching"
         options={{
