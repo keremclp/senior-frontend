@@ -5,14 +5,19 @@ export interface Advisor {
   name: string;
   email: string;
   university: string;
-  department: string;
-  expertise: string[];
+  department?: string;
+  info?: string;
+  secondInfo?: string;
+  prefix?: string;
+  tags?: string[];
+  expertise?: string[];
 }
 
 export interface AdvisorMatch {
   advisor: Advisor;
   matchScore: number;
   matchingAreas: string[];
+  _id: string;
 }
 
 export interface MatchResult {
@@ -21,6 +26,7 @@ export interface MatchResult {
   userId: string;
   advisors: AdvisorMatch[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export const matchingApi = {
