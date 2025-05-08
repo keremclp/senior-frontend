@@ -43,23 +43,44 @@ export default function HomeScreen() {
         }
       }));
       
-      // If there are resumes, try to get best match score
+      // If there are resumes, check all of them for match scores
       if (resumeResponse.resumes.length > 0) {
         try {
-          const matchResult = await matchingApi.getMatchResults(resumeResponse.resumes[0]._id);
+          // Set match score to loading while we check all resumes
+          setStats(prev => ({
+            ...prev,
+            matchScore: { ...prev.matchScore, loading: true }
+          }));
           
-          // Find highest match score
           let highestScore = 0;
-          if (matchResult.data.advisors.length > 0) {
-            highestScore = Math.max(...matchResult.data.advisors.map(match => match.matchScore));
+          
+          // Check each resume for matches and find the highest score
+          for (const resume of resumeResponse.resumes) {
+            try {
+              const matchResult = await matchingApi.getMatchResults(resume._id);
+              
+              if (matchResult.data.advisors.length > 0) {
+                // Find highest score for this resume
+                const resumeHighestScore = Math.max(...matchResult.data.advisors.map(match => match.matchScore));
+                
+                // Update overall highest score if this resume has a higher match
+                if (resumeHighestScore > highestScore) {
+                  highestScore = resumeHighestScore;
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching matches for resume ${resume._id}:`, error);
+              // Continue to next resume if one fails
+            }
           }
           
+          // Update UI with the highest score found
           setStats(prev => ({
             ...prev,
             matchScore: { value: highestScore, loading: false, error: false }
           }));
         } catch (error) {
-          console.error("Error fetching matches:", error);
+          console.error("Error processing matches:", error);
           setStats(prev => ({
             ...prev,
             matchScore: { ...prev.matchScore, loading: false, error: true }
