@@ -5,13 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function ResumeScreen() {
   const { user } = useAuth();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +22,12 @@ export default function ResumeScreen() {
     fetchResumes();
   }, []);
   
-  const fetchResumes = async () => {
-    setIsLoading(true);
+  const fetchResumes = async (refresh = false) => {
+    if (refresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     
     try {
@@ -38,7 +43,13 @@ export default function ResumeScreen() {
       console.error("Error fetching resumes:", err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+  
+  const onRefresh = () => {
+    fetchResumes(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
   
   const handleDeleteResume = async (resumeId: string) => {
@@ -115,7 +126,7 @@ export default function ResumeScreen() {
           <Text className="text-red-500 mt-2">{error}</Text>
           <TouchableOpacity 
             className="mt-4 bg-gray-200 px-4 py-2 rounded-lg"
-            onPress={fetchResumes}
+            onPress={() => fetchResumes()}
           >
             <Text>Try Again</Text>
           </TouchableOpacity>
@@ -214,6 +225,14 @@ export default function ResumeScreen() {
     <ScrollView 
       className="flex-1 bg-gray-50"
       contentContainerStyle={{ padding: 24 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          colors={["#1E3A8A"]} // Android
+          tintColor="#1E3A8A" // iOS
+        />
+      }
     >
       <View className="mb-6">
         <Text className="text-2xl font-bold text-gray-800">My Resumes</Text>
