@@ -94,9 +94,21 @@ export default function ResumeScreen() {
     setIsAnalyzing(true);
     
     try {
-      await matchingApi.findMatches(selectedResumeId);
+      const response = await matchingApi.findMatches(selectedResumeId);
+
+      if(response.data.success) {
+        Alert.alert("Success", "Resume analyzed successfully.");
+      } else {
+        Alert.alert("Error", "Failed to analyze resume: " + response.message);
+        return;
+      }
       
-      // Navigate to the matching results page
+      // Check if the resume was already analyzed
+      if(response.data.alreadyProcessed) {
+        Alert.alert("Info", "This resume has already been analyzed. You can view the results now.");
+      }
+      
+      // Navigate to the matching results page (regardless of whether it's newly analyzed or already done)
       router.push({
         pathname: "/matching",
         params: { resumeId: selectedResumeId }
