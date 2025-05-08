@@ -6,6 +6,8 @@ import * as Haptics from 'expo-haptics';
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import UNIVERSITIES from '@/constant/enums/university-names.enum';
+import ENGINEERING_DISCIPLINES from '@/constant/enums/engineering-fields';
 
 export default function ResumeScreen() {
   const { user } = useAuth();
@@ -202,11 +204,15 @@ export default function ResumeScreen() {
                 
                 <View className="flex-col-reverse mt-2 space-y-reverse space-y-2">
                   <View className="bg-gray-100 rounded-full px-3 py-1 self-start">
-                    <Text className="text-xs font-medium">{resume.engineeringField}</Text>
+                    <Text className="text-xs font-medium">
+                      {ENGINEERING_DISCIPLINES[resume.engineeringField] || resume.engineeringField}
+                    </Text>
                   </View>
                   
                   <View className="bg-gray-100 rounded-full px-3 py-1 self-start">
-                    <Text className="text-xs font-medium">{resume.university}</Text>
+                    <Text className="text-xs font-medium">
+                      {UNIVERSITIES[resume.university] || resume.university}
+                    </Text>
                   </View>
                 </View>
               </View>
