@@ -314,11 +314,19 @@ export default function ResumeUploadScreen() {
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-8">
-          <Text className="text-3xl font-bold text-gray-800">Upload Resume</Text>
-          <Text className="text-gray-600 mt-2">
-            Upload your resume to find matching advisors
-          </Text>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerContent}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="document-text" size={32} color="#FFFFFF" />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.headerTitle}>Upload Resume</Text>
+              <Text style={styles.headerSubtitle}>
+                Upload your resume to find matching advisors
+              </Text>
+            </View>
+          </View>
+          <View style={styles.decorativeElement} />
         </View>
         
         <View className="bg-white rounded-2xl shadow-sm p-6 mb-6" style={styles.formCard}>
@@ -433,6 +441,56 @@ export default function ResumeUploadScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerContainer: {
+    marginBottom: 24,
+    backgroundColor: '#1E40AF', // Primary blue color
+    borderRadius: 16,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  decorativeElement: {
+    position: 'absolute',
+    right: -20,
+    bottom: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
   formCard: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

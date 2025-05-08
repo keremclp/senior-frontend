@@ -296,9 +296,25 @@ export default function ResumeScreen() {
         />
       }
     >
-      <View className="mb-6">
-        <Text className="text-3xl font-bold text-gray-800">My Resumes</Text>
-        <Text className="text-gray-600 mt-1">
+      <View className="mb-8 bg-white rounded-xl p-5 overflow-hidden" style={styles.headerCard}>
+        <View className="absolute top-0 right-0 opacity-5">
+          <Ionicons name="rocket" size={120} color="#1E3A8A" />
+        </View>
+        
+        <View className="flex-row items-center mb-2">
+          <View className="bg-primary w-10 h-10 rounded-lg items-center justify-center mr-3" style={styles.iconContainer}>
+            <View className="flex-row">
+              <Ionicons name="analytics-outline" size={20} color="#FFFFFF" />
+              <Ionicons name="stats-chart-outline" size={20} color="#FFFFFF" style={{marginLeft: -5}} />
+            </View>
+          </View>
+          <View>
+            <Text className="text-3xl font-extrabold text-gray-800">Analyze Resumes</Text>
+            <View className="h-1 bg-primary rounded-full w-16 mt-1" />
+          </View>
+        </View>
+        
+        <Text className="text-gray-600 mt-3 pl-1 text-base">
           Select a resume to find matching advisors
         </Text>
       </View>
@@ -354,5 +370,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  headerCard: {
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
 });

@@ -49,9 +49,9 @@ export default function AppLayout() {
       <Tabs.Screen
         name="resume"
         options={{
-          title: "Resumes",
+          title: "Analyze",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="description" size={size} color={color} />
+            <MaterialIcons name="analytics" size={size} color={color} />
           ),
           headerTitle: "My Resumes",
         }}

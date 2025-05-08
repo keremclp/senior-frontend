@@ -195,20 +195,24 @@ export default function MatchingScreen() {
   // Resume selection UI
   const renderResumeSelection = () => (
     <View>
-      <View className="mb-8 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <View className="px-5 py-6">
-          <View className="flex-row items-center mb-3">
-            <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
-              <Ionicons name="document-text" size={20} color="#1E3A8A" />
+      <View className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-md overflow-hidden border border-blue-100">
+        <View className="px-6 py-7">
+          <View className="flex-row items-center mb-5">
+            <View className="bg-primary h-14 w-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 items-center justify-center mr-4 shadow-sm">
+              <Ionicons name="newspaper-outline" size={26} color="#fffbeb" />
             </View>
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-gray-800">Select Resume</Text>
+              <Text className="text-sm text-blue-600 font-medium mb-1">MATCH WITH ADVISORS</Text>
+              <Text className="text-3xl font-bold text-gray-800">Select Resume</Text>
             </View>
           </View>
-          <Text className="text-gray-600 text-base">
-            Please select a resume to view matching advisors.
-          </Text>
+          <View className="bg-white/70 px-4 py-3 rounded-xl mt-1">
+            <Text className="text-gray-700 text-base leading-relaxed">
+              Please select a resume to view matching advisors based on your profile and career goals.
+            </Text>
+          </View>
         </View>
+        <View className="h-1 bg-gradient-to-r from-blue-400 to-indigo-500" />
       </View>
       
       {loadingResumes ? (
