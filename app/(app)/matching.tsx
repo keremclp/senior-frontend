@@ -1,6 +1,7 @@
 import AdvisorCard from '@/components/advisor/AdvisorCard';
 import AdvisorDetailModal from '@/components/advisor/AdvisorDetailModal';
 import { AdvisorMatch, MatchResult, matchingApi } from '@/lib/api/matching';
+import { Resume, resumeApi } from '@/lib/api/resume';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,15 +17,52 @@ export default function MatchingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
+  // State for resumes
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [loadingResumes, setLoadingResumes] = useState(false);
+  const [selectedResumeTitle, setSelectedResumeTitle] = useState<string | null>(null);
+  
   // State for modal
   const [selectedAdvisor, setSelectedAdvisor] = useState<AdvisorMatch | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   
-  // Fetch match results
-  const fetchMatchResults = async (refresh = false) => {
-    if (!resumeId) {
-      setError("No resume selected");
+  // Fetch user's resumes when no resumeId is provided
+  const fetchUserResumes = async () => {
+    try {
+      setLoadingResumes(true);
+      const response = await resumeApi.getResumes();
+      
+      // Make sure we're correctly extracting the array of resumes
+      if (response && response.resumes) {
+        setResumes(response.resumes);
+        
+        // If resumeId is provided, find the corresponding resume title
+        if (resumeId) {
+          const selectedResume = response.resumes.find(resume => resume._id === resumeId);
+          if (selectedResume) {
+            setSelectedResumeTitle(selectedResume.title || "Untitled Resume");
+          }
+        }
+      } else {
+        console.error("Invalid response format from getResumes", response);
+        setResumes([]);
+      }
+    } catch (err: any) {
+      console.error("Error fetching user resumes:", err);
+      setResumes([]);
+    } finally {
+      setLoadingResumes(false);
       setIsLoading(false);
+    }
+  };
+  
+  // Fetch match results
+  const fetchMatchResults = async (id?: string, refresh = false) => {
+    const targetResumeId = id || resumeId;
+    
+    if (!targetResumeId) {
+      // If no resumeId provided, fetch user's resumes instead
+      fetchUserResumes();
       return;
     }
     
@@ -37,8 +75,19 @@ export default function MatchingScreen() {
     setError(null);
     
     try {
-      const response = await matchingApi.getMatchResults(resumeId as string);
-      setMatchResult(response.data);
+      // If we don't have the resume title yet, fetch it
+      if (!selectedResumeTitle) {
+        fetchUserResumes();
+      }
+      
+      const response = await matchingApi.getMatchResults(targetResumeId as string);
+      
+      if (response && response.data) {
+        setMatchResult(response.data);
+      } else {
+        setError("Invalid response format from getMatchResults");
+        console.error("Invalid response format from getMatchResults", response);
+      }
     } catch (err: any) {
       setError(err?.message || "Failed to fetch advisor matches");
       console.error("Error fetching match results:", err);
@@ -50,12 +99,28 @@ export default function MatchingScreen() {
   
   // Effect to fetch results on load
   useEffect(() => {
-    fetchMatchResults();
+    if (resumeId) {
+      fetchMatchResults();
+    } else {
+      fetchUserResumes();
+    }
   }, [resumeId]);
+  
+  // Handle resume selection
+  const handleResumeSelect = (id: string, title: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedResumeTitle(title);
+    // Navigate to the same screen but with resumeId parameter
+    router.push(`/matching?resumeId=${id}` as any);
+  };
   
   // Handle refresh
   const onRefresh = () => {
-    fetchMatchResults(true);
+    if (resumeId) {
+      fetchMatchResults(undefined, true);
+    } else {
+      fetchUserResumes();
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
   
@@ -95,7 +160,7 @@ export default function MatchingScreen() {
       <Text className="text-red-500 mt-2 text-center">{error}</Text>
       <TouchableOpacity 
         className="mt-4 bg-gray-200 px-4 py-2 rounded-lg"
-        onPress={() => fetchMatchResults()}
+        onPress={() => resumeId ? fetchMatchResults() : fetchUserResumes()}
       >
         <Text>Try Again</Text>
       </TouchableOpacity>
@@ -127,6 +192,66 @@ export default function MatchingScreen() {
     </View>
   );
   
+  // Resume selection UI
+  const renderResumeSelection = () => (
+    <View>
+      <View className="mb-8 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <View className="px-5 py-6">
+          <View className="flex-row items-center mb-3">
+            <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
+              <Ionicons name="document-text" size={20} color="#1E3A8A" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-2xl font-bold text-gray-800">Select Resume</Text>
+            </View>
+          </View>
+          <Text className="text-gray-600 text-base">
+            Please select a resume to view matching advisors.
+          </Text>
+        </View>
+      </View>
+      
+      {loadingResumes ? (
+        <View className="items-center justify-center py-10">
+          <ActivityIndicator size="small" color="#1E3A8A" />
+          <Text className="text-gray-500 mt-2">Loading your resumes...</Text>
+        </View>
+      ) : resumes.length === 0 ? (
+        <View className="items-center justify-center py-10">
+          <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+          <Text className="text-gray-500 mt-2 text-center">No resumes found</Text>
+          <TouchableOpacity 
+            className="mt-6 bg-primary px-6 py-3 rounded-lg"
+            onPress={() => router.push("/resume/upload" as any)}
+          >
+            <Text className="text-white font-medium">Upload Resume</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        resumes.map(resume => (
+          <TouchableOpacity
+            key={resume._id}
+            className="mb-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
+            onPress={() => handleResumeSelect(resume._id, resume.title || "Untitled Resume")}
+          >
+            <View className="flex-row items-center">
+              <View className="h-10 w-10 rounded-full bg-blue-50 items-center justify-center mr-3">
+                <Ionicons name="document" size={20} color="#3B82F6" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-medium text-gray-800">{resume.title || "Untitled Resume"}</Text>
+                <Text className="text-sm text-gray-500">
+                  {resume.createdAt ? `Uploaded ${new Date(resume.createdAt).toLocaleDateString()}` : ""}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        ))
+      )}
+    </View>
+  );
+  
   // Main render
   return (
     <>
@@ -142,50 +267,69 @@ export default function MatchingScreen() {
           />
         }
       >
-        <View className="mb-8 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <View className="px-5 py-6">
-            <View className="flex-row items-center mb-3">
-              <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
-                <Ionicons name="people" size={20} color="#1E3A8A" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-2xl font-bold text-gray-800">Advisor Matches</Text>
+        {!resumeId ? (
+          // If no resumeId provided, show the resume selection UI
+          renderResumeSelection()
+        ) : (
+          // If resumeId is provided, show the regular matching UI
+          <>
+            <View className="mb-8 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+              <View className="px-5 py-6">
+                <View className="flex-row items-center mb-3">
+                  <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
+                    <Ionicons name="people" size={20} color="#1E3A8A" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-2xl font-bold text-gray-800">Advisor Matches</Text>
+                    {selectedResumeTitle && (
+                      <Text className="text-primary font-medium mt-1">
+                        for {selectedResumeTitle}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity 
+                    className="bg-blue-50 p-2 rounded-full"
+                    onPress={() => router.push("/matching" as any)}
+                  >
+                    <Ionicons name="list" size={20} color="#1E3A8A" />
+                  </TouchableOpacity>
+                </View>
+                <Text className="text-gray-600 text-base mt-1">
+                  We've analyzed your resume and found these advisors who match your profile and career goals.
+                </Text>
+                {matchResult && (
+                  <View className="mt-3 bg-blue-50 px-3 py-2 rounded-lg">
+                    <Text className="text-blue-700 font-medium text-sm">
+                      {matchResult.advisors.length} advisor{matchResult.advisors.length !== 1 ? 's' : ''} found
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
-            <Text className="text-gray-600 text-base">
-              We've analyzed your resume and found these advisors who match your profile and career goals.
-            </Text>
-            {matchResult && (
-              <View className="mt-3 bg-blue-50 px-3 py-2 rounded-lg">
-                <Text className="text-blue-700 font-medium text-sm">
-                  {matchResult.advisors.length} advisor{matchResult.advisors.length !== 1 ? 's' : ''} found
-                </Text>
+            
+            {/* Sorting control */}
+            {!isLoading && !error && matchResult && matchResult.advisors.length > 0 && (
+              <View className="flex-row justify-end mb-4">
+                <TouchableOpacity 
+                  className="flex-row items-center bg-white px-3 py-2 rounded-lg border border-gray-200"
+                  onPress={toggleSortOrder}
+                >
+                  <Text className="mr-2 text-gray-600">Sort by Match Score</Text>
+                  <Ionicons 
+                    name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} 
+                    size={16} 
+                    color="#4B5563"
+                  />
+                </TouchableOpacity>
               </View>
             )}
-          </View>
-        </View>
-        
-        {/* Sorting control */}
-        {!isLoading && !error && matchResult && matchResult.advisors.length > 0 && (
-          <View className="flex-row justify-end mb-4">
-            <TouchableOpacity 
-              className="flex-row items-center bg-white px-3 py-2 rounded-lg border border-gray-200"
-              onPress={toggleSortOrder}
-            >
-              <Text className="mr-2 text-gray-600">Sort by Match Score</Text>
-              <Ionicons 
-                name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} 
-                size={16} 
-                color="#4B5563"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        {isLoading && !isRefreshing ? renderLoading() : (
-          error ? renderError() : (
-            !matchResult || matchResult.advisors.length === 0 ? renderNoMatches() : renderAdvisors()
-          )
+            
+            {isLoading && !isRefreshing ? renderLoading() : (
+              error ? renderError() : (
+                !matchResult || matchResult.advisors.length === 0 ? renderNoMatches() : renderAdvisors()
+              )
+            )}
+          </>
         )}
       </ScrollView>
       
