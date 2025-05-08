@@ -142,11 +142,27 @@ export default function MatchingScreen() {
           />
         }
       >
-        <View className="mb-6">
-          <Text className="text-2xl font-bold text-gray-800">Advisor Matches</Text>
-          <Text className="text-gray-600 mt-1">
-            Advisors who match your resume profile
-          </Text>
+        <View className="mb-8 bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+          <View className="px-5 py-6">
+            <View className="flex-row items-center mb-3">
+              <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
+                <Ionicons name="people" size={20} color="#1E3A8A" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-2xl font-bold text-gray-800">Advisor Matches</Text>
+              </View>
+            </View>
+            <Text className="text-gray-600 text-base">
+              We've analyzed your resume and found these advisors who match your profile and career goals.
+            </Text>
+            {matchResult && (
+              <View className="mt-3 bg-blue-50 px-3 py-2 rounded-lg">
+                <Text className="text-blue-700 font-medium text-sm">
+                  {matchResult.advisors.length} advisor{matchResult.advisors.length !== 1 ? 's' : ''} found
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
         
         {/* Sorting control */}
