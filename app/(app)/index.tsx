@@ -1,20 +1,133 @@
 import HeaderUserDropdown from "@/components/header/HeaderUserDropdown";
 import { useAuth } from "@/context/auth-context";
+import { resumeApi } from "@/lib/api/resume";
+import { matchingApi } from "@/lib/api/matching";
+import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Simplified statistics with just resumes and best match
+  const [stats, setStats] = useState({
+    resumesUploaded: { value: 0, loading: true, error: false },
+    matchScore: { value: 0, loading: true, error: false }
+  });
+
+  // Fetch statistics from APIs
+  const fetchStatistics = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      // Set all stats to loading state
+      setStats(prev => ({
+        resumesUploaded: { ...prev.resumesUploaded, loading: true, error: false },
+        matchScore: { ...prev.matchScore, loading: true, error: false },
+      }));
+    }
+
+    // Fetch resume count
+    try {
+      const resumeResponse = await resumeApi.getResumes();
+      setStats(prev => ({
+        ...prev,
+        resumesUploaded: { 
+          value: resumeResponse.resumes.length, 
+          loading: false,
+          error: false 
+        }
+      }));
+      
+      // If there are resumes, try to get best match score
+      if (resumeResponse.resumes.length > 0) {
+        try {
+          const matchResult = await matchingApi.getMatchResults(resumeResponse.resumes[0]._id);
+          
+          // Find highest match score
+          let highestScore = 0;
+          if (matchResult.data.advisors.length > 0) {
+            highestScore = Math.max(...matchResult.data.advisors.map(match => match.matchScore));
+          }
+          
+          setStats(prev => ({
+            ...prev,
+            matchScore: { value: highestScore, loading: false, error: false }
+          }));
+        } catch (error) {
+          console.error("Error fetching matches:", error);
+          setStats(prev => ({
+            ...prev,
+            matchScore: { ...prev.matchScore, loading: false, error: true }
+          }));
+        }
+      } else {
+        // No resumes, so no matches
+        setStats(prev => ({
+          ...prev,
+          matchScore: { value: 0, loading: false, error: false }
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching resumes:", error);
+      setStats(prev => ({
+        ...prev,
+        resumesUploaded: { ...prev.resumesUploaded, loading: false, error: true }
+      }));
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchStatistics();
+  }, []);
+
+  // Handle refresh
+  const onRefresh = () => {
+    fetchStatistics(true);
+  };
+
+  // Render stat value with loading or error state
+  const renderStatValue = (stat) => {
+    if (stat.loading) {
+      return <ActivityIndicator size="small" color="#1E3A8A" />;
+    }
+    if (stat.error) {
+      return <Text className="text-red-500">--</Text>;
+    }
+    return <Text className="text-2xl font-bold text-gray-800">{stat.value}</Text>;
+  };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      {/* Enhanced Header Section */}
-      <View className="bg-primary p-6">
+    <ScrollView 
+      className="flex-1 bg-gray-50"
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          colors={["#1E3A8A"]} // Android
+          tintColor="#1E3A8A" // iOS
+        />
+      }
+    >
+      {/* Enhanced Header Section with Gradient */}
+      <LinearGradient
+        colors={['#1E3A8A', '#2563EB']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="p-6 pt-8 pb-10 rounded-b-3xl shadow-lg"
+      >
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Image 
               source={require('@/assets/images/react-logo.png')} 
-              className="w-8 h-8 rounded-full mr-2"
+              className="w-10 h-10 rounded-full mr-2"
               style={{ resizeMode: 'contain' }}
             />
             <Text className="text-white text-xl font-bold">ResumeMatch</Text>
@@ -22,83 +135,153 @@ export default function HomeScreen() {
           <HeaderUserDropdown user={user} />
         </View>
         
-        <View className="mt-2">
+        <View className="mt-4">
           <Text className="text-white text-2xl font-bold mb-2">
-            Welcome, {user?.name}
+            Welcome, {user?.name?.split(' ')[0]}
           </Text>
           <Text className="text-white opacity-80">
-            Use this dashboard to manage your resumes and view advisor matches.
+            Let's find the perfect advisor for your career path
           </Text>
         </View>
+      </LinearGradient>
+
+      {/* Stats Cards - Updated to only show two stats */}
+      <View className="px-6 -mt-6">
+        <Animated.View 
+          entering={FadeInDown.delay(200).duration(700)} 
+          className="bg-white rounded-2xl shadow-md p-5 mb-6"
+        >
+          <Text className="text-gray-700 font-medium mb-3">Your Progress</Text>
+          
+          <View className="flex-row justify-around">
+            <View className="items-center">
+              <View className="bg-blue-100 w-14 h-14 rounded-full items-center justify-center mb-2">
+                <Ionicons name="document-text" size={24} color="#1E3A8A" />
+              </View>
+              {renderStatValue(stats.resumesUploaded)}
+              <Text className="text-xs text-gray-500">Resumes</Text>
+            </View>
+            
+            <View className="items-center">
+              <View className="bg-yellow-100 w-14 h-14 rounded-full items-center justify-center mb-2">
+                <Ionicons name="star" size={24} color="#FBBF24" />
+              </View>
+              {renderStatValue(stats.matchScore)}
+              <Text className="text-xs text-gray-500">Best Match %</Text>
+            </View>
+          </View>
+        </Animated.View>
       </View>
 
       <View className="p-6">
-        <View className="bg-white rounded-lg p-6 shadow-sm mb-6">
-          <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
+        {/* Quick Actions */}
+        <Animated.View 
+          entering={FadeInDown.delay(400).duration(700)}
+          className="bg-white rounded-2xl p-6 shadow-md mb-6"
+        >
+          <Text className="text-lg font-semibold mb-4 text-gray-800">Quick Actions</Text>
           
           <View className="flex-row flex-wrap">
             <Link href={"/resume/upload" as any} asChild>
-              <TouchableOpacity className="bg-blue-50 p-4 rounded-lg w-[48%] mr-[4%] mb-4">
-                <Text className="text-primary font-medium text-center">Upload Resume</Text>
+              <TouchableOpacity className="bg-blue-50 p-4 rounded-xl w-[48%] mr-[4%] mb-4 shadow-sm border border-blue-100">
+                <View className="items-center">
+                  <View className="bg-blue-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                    <Ionicons name="cloud-upload-outline" size={24} color="#1E3A8A" />
+                  </View>
+                  <Text className="text-primary font-medium text-center">Upload Resume</Text>
+                </View>
               </TouchableOpacity>
             </Link>
             
             <Link href={"/resume" as any} asChild>
-              <TouchableOpacity className="bg-blue-50 p-4 rounded-lg w-[48%] mb-4">
-                <Text className="text-primary font-medium text-center">View Resumes</Text>
+              <TouchableOpacity className="bg-indigo-50 p-4 rounded-xl w-[48%] mb-4 shadow-sm border border-indigo-100">
+                <View className="items-center">
+                  <View className="bg-indigo-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                    <Ionicons name="document-text-outline" size={24} color="#4F46E5" />
+                  </View>
+                  <Text className="text-indigo-700 font-medium text-center">View Resumes</Text>
+                </View>
               </TouchableOpacity>
             </Link>
             
             <Link href={"/matching" as any} asChild>
-              <TouchableOpacity className="bg-blue-50 p-4 rounded-lg w-[48%] mr-[4%]">
-                <Text className="text-primary font-medium text-center">View Matches</Text>
+              <TouchableOpacity className="bg-green-50 p-4 rounded-xl w-[48%] mr-[4%] shadow-sm border border-green-100">
+                <View className="items-center">
+                  <View className="bg-green-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                    <Ionicons name="people-outline" size={24} color="#10B981" />
+                  </View>
+                  <Text className="text-green-700 font-medium text-center">View Matches</Text>
+                </View>
               </TouchableOpacity>
             </Link>
             
             <Link href={"/profile" as any} asChild>
-              <TouchableOpacity className="bg-blue-50 p-4 rounded-lg w-[48%]">
-                <Text className="text-primary font-medium text-center">Profile Settings</Text>
+              <TouchableOpacity className="bg-amber-50 p-4 rounded-xl w-[48%] shadow-sm border border-amber-100">
+                <View className="items-center">
+                  <View className="bg-amber-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                    <Ionicons name="settings-outline" size={24} color="#D97706" />
+                  </View>
+                  <Text className="text-amber-700 font-medium text-center">Settings</Text>
+                </View>
               </TouchableOpacity>
             </Link>
           </View>
-        </View>
+        </Animated.View>
 
-        <View className="bg-white rounded-lg p-6 shadow-sm">
-          <Text className="text-lg font-semibold mb-4">How It Works</Text>
+        {/* How It Works - Enhanced */}
+        <Animated.View 
+          entering={FadeInDown.delay(800).duration(700)}
+          className="bg-white rounded-2xl p-6 shadow-md"
+        >
+          <Text className="text-lg font-semibold mb-4 text-gray-800">How It Works</Text>
           
-          <View className="space-y-4">
+          <View className="space-y-6">
+            {/* Step 1 */}
             <View className="flex-row">
-              <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3">
-                <Text className="text-primary font-bold">1</Text>
+              <View className="items-center mr-4">
+                <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center">
+                  <MaterialIcons name="upload-file" size={24} color="#1E3A8A" />
+                </View>
+                <View className="h-14 w-0.5 bg-blue-100 my-1"></View>
               </View>
-              <View className="flex-1">
-                <Text className="font-medium">Upload Your Resume</Text>
-                <Text className="text-gray-600 text-sm">Upload your resume in PDF or DOCX format.</Text>
+              <View className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <Text className="font-bold text-gray-800">Upload Your Resume</Text>
+                <Text className="text-gray-600 text-sm mt-1">Upload your resume in PDF or DOCX format. We support all standard resume formats.</Text>
               </View>
             </View>
             
+            {/* Step 2 */}
             <View className="flex-row">
-              <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3">
-                <Text className="text-primary font-bold">2</Text>
+              <View className="items-center mr-4">
+                <View className="w-12 h-12 bg-purple-100 rounded-full items-center justify-center">
+                  <MaterialCommunityIcons name="file-document-edit" size={24} color="#8B5CF6" />
+                </View>
+                <View className="h-14 w-0.5 bg-purple-100 my-1"></View>
               </View>
-              <View className="flex-1">
-                <Text className="font-medium">Process Your Resume</Text>
-                <Text className="text-gray-600 text-sm">We'll analyze your resume for key skills and experiences.</Text>
+              <View className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                <Text className="font-bold text-gray-800">Process Your Resume</Text>
+                <Text className="text-gray-600 text-sm mt-1">Our AI analyzes your resume for key skills, experiences, and academic background to find your unique strengths.</Text>
               </View>
             </View>
             
+            {/* Step 3 */}
             <View className="flex-row">
-              <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3">
-                <Text className="text-primary font-bold">3</Text>
+              <View className="items-center mr-4">
+                <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center">
+                  <FontAwesome5 name="handshake" size={22} color="#059669" />
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="font-medium">Get Matched with Advisors</Text>
-                <Text className="text-gray-600 text-sm">View your advisor matches based on your resume profile.</Text>
+              <View className="flex-1 bg-green-50 p-4 rounded-xl border border-green-100">
+                <Text className="font-bold text-gray-800">Get Matched with Advisors</Text>
+                <Text className="text-gray-600 text-sm mt-1">View your personalized advisor matches ranked by compatibility with your profile and career goals.</Text>
               </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </View>
+      
+      {/* Footer space */}
+      <View className="h-6"></View>
     </ScrollView>
   );
 }

@@ -20,6 +20,8 @@ module.exports = {
         base: ["1rem", { lineHeight: "1.5rem" }],
         lg: ["1.125rem", { lineHeight: "1.75rem" }],
         xl: ["1.25rem", { lineHeight: "1.75rem" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem" }],
       },
       spacing: {
         0: "0px",
@@ -34,8 +36,13 @@ module.exports = {
         9: "36px",
         10: "40px",
       },
-
+      borderRadius: {
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
 }
