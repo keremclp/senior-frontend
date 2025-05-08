@@ -3,7 +3,10 @@ import { getPasswordStrength, getStrengthColor, getStrengthText, validateConfirm
 import * as Haptics from 'expo-haptics';
 import { Link } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
@@ -15,6 +18,9 @@ export default function RegisterScreen() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const [secureConfirmTextEntry, setSecureConfirmTextEntry] = useState(true);
   
   const { register, isLoading, error } = useAuth();
   
@@ -68,6 +74,16 @@ export default function RegisterScreen() {
   
   const passwordStrength = getPasswordStrength(password);
   
+  const toggleSecureEntry = () => {
+    setSecureTextEntry(!secureTextEntry);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+  
+  const toggleSecureConfirmEntry = () => {
+    setSecureConfirmTextEntry(!secureConfirmTextEntry);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+  
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-gray-50"
@@ -75,115 +91,241 @@ export default function RegisterScreen() {
     >
       <ScrollView 
         className="flex-1"
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'center',
-          paddingHorizontal: 24,
-          paddingVertical: 40
-        }}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
       >
-        <View className="max-w-sm w-full self-center">
-          <Text className="text-3xl font-bold text-center text-primary">Create Account</Text>
-          <Text className="text-gray-500 text-center mt-2 mb-8">Sign up to get started</Text>
-          
-          <View className="space-y-6">
-            <View>
-              <TextInput
-                className={`border rounded-lg p-4 bg-white ${nameError ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Full Name"
-                value={name}
-                onChangeText={setName}
-                onBlur={handleValidateName}
+        {/* Hero Section with Gradient */}
+        <LinearGradient
+          colors={['#1E3A8A', '#2563EB']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="w-full py-8 px-6 rounded-b-3xl"
+          style={styles.gradientHeader}
+        >
+          <View className="items-center">
+            <View className="bg-white/20 w-20 h-20 rounded-full items-center justify-center mb-3">
+              <Image 
+                source={require('@/assets/images/react-logo.png')} 
+                className="w-12 h-12"
+                style={{ resizeMode: 'contain' }}
               />
-              {nameError ? <Text className="text-red-500 text-sm mt-1">{nameError}</Text> : null}
             </View>
+            <Text className="text-2xl font-bold text-white">Join ResumeMatch</Text>
+            <Text className="text-white/80 text-center mt-1">Create your account today</Text>
+          </View>
+        </LinearGradient>
+        
+        {/* Sign Up Form Card */}
+        <Animated.View 
+          className="px-6"
+          entering={FadeInDown.duration(700).springify()}
+        >
+          <View className="bg-white rounded-2xl p-6 shadow-lg -mt-6" style={styles.formCard}>
+            <Text className="text-2xl font-bold text-gray-800 mb-6">Create Account</Text>
             
-            <View>
-              <TextInput
-                className={`border rounded-lg p-4 bg-white ${emailError ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                onBlur={handleValidateEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-              {emailError ? <Text className="text-red-500 text-sm mt-1">{emailError}</Text> : null}
-            </View>
-            
-            <View>
-              <TextInput
-                className={`border rounded-lg p-4 bg-white ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                onBlur={handleValidatePassword}
-                secureTextEntry
-              />
-              {passwordError ? (
-                <Text className="text-red-500 text-sm mt-1">{passwordError}</Text>
-              ) : password ? (
-                <View className="mt-1">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm text-gray-600">Password Strength:</Text>
-                    <Text className={`text-sm ${
-                      passwordStrength < 3 ? 'text-red-500' : 
-                      passwordStrength < 4 ? 'text-yellow-500' : 'text-green-500'
-                    }`}>
-                      {getStrengthText(passwordStrength)}
-                    </Text>
+            <View className="space-y-5">
+              {/* Name Input */}
+              <View>
+                <Text className="text-sm font-medium text-gray-600 mb-1.5 ml-1">Full Name</Text>
+                <View className="flex-row items-center">
+                  <View className="absolute z-10 h-full justify-center pl-3">
+                    <Ionicons name="person-outline" size={18} color="#6B7280" />
                   </View>
-                  <View className="h-1.5 w-full bg-gray-200 rounded-full">
-                    <View 
-                      className={`h-1.5 rounded-full ${getStrengthColor(passwordStrength)}`}
-                      style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                  <TextInput
+                    className={`border rounded-xl p-4 pl-10 bg-white flex-1 ${nameError ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="Enter your full name"
+                    placeholderTextColor="#9CA3AF"
+                    value={name}
+                    onChangeText={setName}
+                    onBlur={handleValidateName}
+                    style={styles.input}
+                  />
+                </View>
+                {nameError ? <Text className="text-red-500 text-sm mt-1.5 ml-1">{nameError}</Text> : null}
+              </View>
+              
+              {/* Email Input */}
+              <View>
+                <Text className="text-sm font-medium text-gray-600 mb-1.5 ml-1">Email Address</Text>
+                <View className="flex-row items-center">
+                  <View className="absolute z-10 h-full justify-center pl-3">
+                    <Ionicons name="mail-outline" size={18} color="#6B7280" />
+                  </View>
+                  <TextInput
+                    className={`border rounded-xl p-4 pl-10 bg-white flex-1 ${emailError ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="Enter your email"
+                    placeholderTextColor="#9CA3AF"
+                    value={email}
+                    onChangeText={setEmail}
+                    onBlur={handleValidateEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    style={styles.input}
+                  />
+                </View>
+                {emailError ? <Text className="text-red-500 text-sm mt-1.5 ml-1">{emailError}</Text> : null}
+              </View>
+              
+              {/* Password Input */}
+              <View>
+                <Text className="text-sm font-medium text-gray-600 mb-1.5 ml-1">Password</Text>
+                <View className="flex-row items-center">
+                  <View className="absolute z-10 h-full justify-center pl-3">
+                    <Ionicons name="lock-closed-outline" size={18} color="#6B7280" />
+                  </View>
+                  <TextInput
+                    className={`border rounded-xl p-4 pl-10 pr-10 bg-white flex-1 ${passwordError ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="Create a password"
+                    placeholderTextColor="#9CA3AF"
+                    value={password}
+                    onChangeText={setPassword}
+                    onBlur={handleValidatePassword}
+                    secureTextEntry={secureTextEntry}
+                    style={styles.input}
+                  />
+                  <TouchableOpacity 
+                    className="absolute right-0 h-full justify-center pr-3.5"
+                    onPress={toggleSecureEntry}
+                  >
+                    <Ionicons 
+                      name={secureTextEntry ? "eye-outline" : "eye-off-outline"} 
+                      size={20} 
+                      color="#6B7280" 
                     />
+                  </TouchableOpacity>
+                </View>
+                {passwordError ? (
+                  <Text className="text-red-500 text-sm mt-1.5 ml-1">{passwordError}</Text>
+                ) : password ? (
+                  <View className="mt-2 px-1">
+                    <View className="flex-row items-center justify-between mb-1.5">
+                      <Text className="text-sm text-gray-600">Password Strength:</Text>
+                      <View className={`px-2 py-0.5 rounded-md ${
+                        passwordStrength < 3 ? 'bg-red-100' : 
+                        passwordStrength < 4 ? 'bg-yellow-100' : 'bg-green-100'
+                      }`}>
+                        <Text className={`text-sm font-medium ${
+                          passwordStrength < 3 ? 'text-red-600' : 
+                          passwordStrength < 4 ? 'text-yellow-700' : 'text-green-600'
+                        }`}>
+                          {getStrengthText(passwordStrength)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <View 
+                        className={`h-2 rounded-full ${getStrengthColor(passwordStrength)}`}
+                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+              
+              {/* Confirm Password Input */}
+              <View>
+                <Text className="text-sm font-medium text-gray-600 mb-1.5 ml-1">Confirm Password</Text>
+                <View className="flex-row items-center">
+                  <View className="absolute z-10 h-full justify-center pl-3">
+                    <Ionicons name="shield-checkmark-outline" size={18} color="#6B7280" />
+                  </View>
+                  <TextInput
+                    className={`border rounded-xl p-4 pl-10 pr-10 bg-white flex-1 ${confirmPasswordError ? 'border-red-500' : 'border-gray-200'}`}
+                    placeholder="Confirm your password"
+                    placeholderTextColor="#9CA3AF"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    onBlur={handleValidateConfirmPassword}
+                    secureTextEntry={secureConfirmTextEntry}
+                    style={styles.input}
+                  />
+                  <TouchableOpacity 
+                    className="absolute right-0 h-full justify-center pr-3.5"
+                    onPress={toggleSecureConfirmEntry}
+                  >
+                    <Ionicons 
+                      name={secureConfirmTextEntry ? "eye-outline" : "eye-off-outline"} 
+                      size={20} 
+                      color="#6B7280" 
+                    />
+                  </TouchableOpacity>
+                </View>
+                {confirmPasswordError ? <Text className="text-red-500 text-sm mt-1.5 ml-1">{confirmPasswordError}</Text> : null}
+              </View>
+              
+              {/* Error message */}
+              {error ? (
+                <View className="bg-red-50 p-4 rounded-xl border border-red-100">
+                  <View className="flex-row items-center">
+                    <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                    <Text className="text-red-500 font-medium ml-2">{error}</Text>
                   </View>
                 </View>
               ) : null}
-            </View>
-            
-            <View>
-              <TextInput
-                className={`border rounded-lg p-4 bg-white ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                onBlur={handleValidateConfirmPassword}
-                secureTextEntry
-              />
-              {confirmPasswordError ? <Text className="text-red-500 text-sm mt-1">{confirmPasswordError}</Text> : null}
-            </View>
-            
-            {error ? (
-              <View className="bg-red-50 p-3 rounded-lg">
-                <Text className="text-red-500">{error}</Text>
+              
+              {/* Register button */}
+              <TouchableOpacity
+                className={`py-4 rounded-xl mt-2 ${isLoading ? 'bg-blue-400' : 'bg-primary'}`}
+                onPress={handleRegister}
+                disabled={isLoading}
+                style={styles.registerButton}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text className="text-white text-center font-semibold text-lg">Create Account</Text>
+                )}
+              </TouchableOpacity>
+              
+              {/* Login link */}
+              <View className="flex-row justify-center mt-4">
+                <Text className="text-gray-600">Already have an account? </Text>
+                <Link href="/(auth)/login" asChild>
+                  <TouchableOpacity onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+                    <Text className="text-primary font-semibold">Log in</Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
-            ) : null}
-            
-            <TouchableOpacity
-              className="bg-primary py-4 rounded-lg mt-2"
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white text-center font-semibold">Create Account</Text>
-              )}
-            </TouchableOpacity>
-            
-            <View className="flex-row justify-center mt-4">
-              <Text className="text-gray-600">Already have an account? </Text>
-              <Link href="/(auth)/login" asChild>
-                <TouchableOpacity>
-                  <Text className="text-primary font-medium">Log in</Text>
-                </TouchableOpacity>
-              </Link>
             </View>
           </View>
+        </Animated.View>
+        
+        {/* Footer */}
+        <View className="mt-6 mb-8 items-center">
+          <Text className="text-gray-500 text-xs">By signing up, you agree to our Terms & Privacy Policy</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    paddingVertical: 20,
+  },
+  gradientHeader: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  formCard: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  input: {
+    fontSize: 16,
+  },
+  registerButton: {
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  }
+});
