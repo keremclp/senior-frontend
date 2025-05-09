@@ -1,13 +1,13 @@
 import HeaderUserDropdown from "@/components/header/HeaderUserDropdown";
 import { useAuth } from "@/context/auth-context";
-import { resumeApi } from "@/lib/api/resume";
 import { matchingApi } from "@/lib/api/matching";
+import { resumeApi } from "@/lib/api/resume";
 import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ export default function HomeScreen() {
   // Simplified statistics with just resumes and best match
   const [stats, setStats] = useState({
     resumesUploaded: { value: 0, loading: true, error: false },
-    matchScore: { value: 0, loading: true, error: false }
+    matchScore: { value: 0, loading: true, error: false, noProcessedResumes: false }
   });
 
   // Fetch statistics from APIs
@@ -43,41 +43,62 @@ export default function HomeScreen() {
         }
       }));
       
-      // If there are resumes, check all of them for match scores
+      // If there are resumes, check for processed ones with match scores
       if (resumeResponse.resumes.length > 0) {
         try {
-          // Set match score to loading while we check all resumes
+          // Set match score to loading while we check processed resumes
           setStats(prev => ({
             ...prev,
             matchScore: { ...prev.matchScore, loading: true }
           }));
           
           let highestScore = 0;
+          let hasProcessedResumes = false;
           
-          // Check each resume for matches and find the highest score
-          for (const resume of resumeResponse.resumes) {
-            try {
-              const matchResult = await matchingApi.getMatchResults(resume._id);
-              
-              if (matchResult.data.advisors.length > 0) {
-                // Find highest score for this resume
-                const resumeHighestScore = Math.max(...matchResult.data.advisors.map(match => match.matchScore));
+          // Filter for processed resumes first
+          const processedResumes = resumeResponse.resumes.filter(
+            resume => resume.status === 'processed'
+          );
+          
+          // Only proceed if we have processed resumes
+          if (processedResumes.length > 0) {
+            hasProcessedResumes = true;
+            
+            // Check each processed resume for matches
+            for (const resume of processedResumes) {
+              try {
+                const matchResult = await matchingApi.getMatchResults(resume._id);
                 
-                // Update overall highest score if this resume has a higher match
-                if (resumeHighestScore > highestScore) {
-                  highestScore = resumeHighestScore;
+                // Make sure we have valid data and advisors
+                if (matchResult && matchResult.data && matchResult.data.advisors && 
+                    matchResult.data.advisors.length > 0) {
+                  // Find highest score for this resume
+                  const resumeHighestScore = Math.max(
+                    ...matchResult.data.advisors.map(match => match.matchScore)
+                  );
+                  
+                  // Update overall highest score if this resume has a higher match
+                  if (resumeHighestScore > highestScore) {
+                    highestScore = resumeHighestScore;
+                  }
                 }
+              } catch (error) {
+                console.error(`Error fetching matches for resume ${resume._id}:`, error);
+                // Continue to next resume if one fails
               }
-            } catch (error) {
-              console.error(`Error fetching matches for resume ${resume._id}:`, error);
-              // Continue to next resume if one fails
             }
           }
           
-          // Update UI with the highest score found
+          // Update UI with the highest score found or 0 if no processed resumes
           setStats(prev => ({
             ...prev,
-            matchScore: { value: highestScore, loading: false, error: false }
+            matchScore: { 
+              value: highestScore,
+              loading: false,
+              error: false,
+              // Add a note to the state indicating if no processed resumes were found
+              noProcessedResumes: !hasProcessedResumes 
+            }
           }));
         } catch (error) {
           console.error("Error processing matches:", error);
@@ -90,7 +111,7 @@ export default function HomeScreen() {
         // No resumes, so no matches
         setStats(prev => ({
           ...prev,
-          matchScore: { value: 0, loading: false, error: false }
+          matchScore: { value: 0, loading: false, error: false, noProcessedResumes: true }
         }));
       }
     } catch (error) {
@@ -115,29 +136,32 @@ export default function HomeScreen() {
   };
 
   // Render stat value with loading or error state
-  const renderStatValue = (stat) => {
+  const renderStatValue = (stat: { value: number; loading: boolean; error: boolean; noProcessedResumes?: boolean }) => {
     if (stat.loading) {
       return <ActivityIndicator size="small" color="#1E3A8A" />;
     }
     if (stat.error) {
       return <Text className="text-red-500">--</Text>;
     }
+    // Special case for match score when we have resumes but none are processed yet
+    if (stat.noProcessedResumes && stat === stats.matchScore) {
+      return <Text className="text-lg font-medium text-amber-500">--</Text>;
+    }
     return <Text className="text-2xl font-bold text-gray-800">{stat.value}</Text>;
   };
 
   return (
     <ScrollView 
-      className="flex-1 bg-gray-50"
+      contentContainerStyle={{ flexGrow: 1 }}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={onRefresh}
+        <RefreshControl 
+          refreshing={isRefreshing} 
+          onRefresh={onRefresh} 
           colors={["#1E3A8A"]} // Android
-          tintColor="#1E3A8A" // iOS
+          tintColor="#1E3A8A" // iOS 
         />
       }
     >
-      {/* Enhanced Header Section with Gradient */}
       <LinearGradient
         colors={['#1E3A8A', '#2563EB']}
         start={{ x: 0, y: 0 }}
@@ -155,7 +179,6 @@ export default function HomeScreen() {
           </View>
           <HeaderUserDropdown user={user} />
         </View>
-        
         <View className="mt-4">
           <Text className="text-white text-2xl font-bold mb-2">
             Welcome, {user?.name?.split(' ')[0]}
@@ -165,15 +188,14 @@ export default function HomeScreen() {
           </Text>
         </View>
       </LinearGradient>
-
-      {/* Stats Cards - Updated to only show two stats */}
+      
+      {/* Stats Cards */}
       <View className="px-6 -mt-6">
         <Animated.View 
           entering={FadeInDown.delay(200).duration(700)} 
           className="bg-white rounded-2xl shadow-md p-5 mb-6"
-        >
+        > 
           <Text className="text-gray-700 font-medium mb-3">Your Progress</Text>
-          
           <View className="flex-row justify-around">
             <View className="items-center">
               <View className="bg-blue-100 w-14 h-14 rounded-full items-center justify-center mb-2">
@@ -182,7 +204,6 @@ export default function HomeScreen() {
               {renderStatValue(stats.resumesUploaded)}
               <Text className="text-xs text-gray-500">Resumes</Text>
             </View>
-            
             <View className="items-center">
               <View className="bg-yellow-100 w-14 h-14 rounded-full items-center justify-center mb-2">
                 <Ionicons name="star" size={24} color="#FBBF24" />
@@ -193,15 +214,14 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
       </View>
-
+      
       <View className="p-6">
         {/* Quick Actions */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.delay(400).duration(700)}
           className="bg-white rounded-2xl p-6 shadow-md mb-6"
-        >
+        > 
           <Text className="text-lg font-semibold mb-4 text-gray-800">Quick Actions</Text>
-          
           <View className="flex-row flex-wrap">
             <Link href={"/resume/upload" as any} asChild>
               <TouchableOpacity className="bg-blue-50 p-4 rounded-xl w-[48%] mr-[4%] mb-4 shadow-sm border border-blue-100">
@@ -213,7 +233,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             </Link>
-            
             <Link href={"/resume" as any} asChild>
               <TouchableOpacity className="bg-indigo-50 p-4 rounded-xl w-[48%] mb-4 shadow-sm border border-indigo-100">
                 <View className="items-center">
@@ -224,7 +243,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             </Link>
-            
             <Link href={"/matching" as any} asChild>
               <TouchableOpacity className="bg-green-50 p-4 rounded-xl w-[48%] mr-[4%] shadow-sm border border-green-100">
                 <View className="items-center">
@@ -235,7 +253,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             </Link>
-            
             <Link href={"/profile" as any} asChild>
               <TouchableOpacity className="bg-amber-50 p-4 rounded-xl w-[48%] shadow-sm border border-amber-100">
                 <View className="items-center">
@@ -248,14 +265,13 @@ export default function HomeScreen() {
             </Link>
           </View>
         </Animated.View>
-
-        {/* How It Works - Enhanced */}
-        <Animated.View 
+        
+        {/* How It Works */}
+        <Animated.View
           entering={FadeInDown.delay(800).duration(700)}
           className="bg-white rounded-2xl p-6 shadow-md"
-        >
+        > 
           <Text className="text-lg font-semibold mb-4 text-gray-800">How It Works</Text>
-          
           <View className="space-y-6">
             {/* Step 1 */}
             <View className="flex-row">

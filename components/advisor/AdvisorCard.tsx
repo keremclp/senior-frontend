@@ -13,7 +13,7 @@ export default function AdvisorCard({ match, onPress }: AdvisorCardProps) {
   
   // Get score color based on percentage
   const getScoreColor = (score: number) => {
-    const numericScore = Number(score);
+    const numericScore = Number(score) || 0;
     
     if (numericScore >= 75) return '#10B981'; // green-500
     if (numericScore >= 60) return '#3B82F6'; // blue-500
