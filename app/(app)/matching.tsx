@@ -16,6 +16,7 @@ export default function MatchingScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [needsAnalysis, setNeedsAnalysis] = useState(false);
   
   // State for resumes
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -73,6 +74,7 @@ export default function MatchingScreen() {
     }
     
     setError(null);
+    setNeedsAnalysis(false);
     
     try {
       // If we don't have the resume title yet, fetch it
@@ -82,8 +84,10 @@ export default function MatchingScreen() {
       
       const response = await matchingApi.getMatchResults(targetResumeId as string);
       
-      if (response && response.data) {
+      if (response.status === 'success' && response.data) {
         setMatchResult(response.data);
+      } else if (response.status === 'not_analyzed') {
+        setNeedsAnalysis(true);
       } else {
         setError("Invalid response format from getMatchResults");
         console.error("Invalid response format from getMatchResults", response);
@@ -154,6 +158,25 @@ export default function MatchingScreen() {
     <View className="items-center justify-center py-20">
       <ActivityIndicator size="large" color="#1E3A8A" />
       <Text className="text-gray-500 mt-4">Loading advisor matches...</Text>
+    </View>
+  );
+  
+  const renderNeedsAnalysis = () => (
+    <View className="items-center justify-center py-20">
+      <Ionicons name="analytics-outline" size={48} color="#9CA3AF" />
+      <Text className="text-gray-600 font-medium mt-4 text-center text-lg">
+        This resume hasn't been analyzed yet
+      </Text>
+      <Text className="text-gray-500 mt-2 text-center px-6">
+        Go to the Resume screen to analyze this resume and find matching advisors
+      </Text>
+      <TouchableOpacity 
+        className="mt-8 bg-primary px-6 py-3 rounded-lg flex-row items-center"
+        onPress={() => router.push("/resume" as any)}
+      >
+        <Ionicons name="document-text-outline" size={18} color="white" />
+        <Text className="text-white font-medium ml-2">Go to Resume Screen</Text>
+      </TouchableOpacity>
     </View>
   );
   
@@ -302,12 +325,16 @@ export default function MatchingScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text className="text-gray-600 text-base mt-1">
-                  We've analyzed your resume and found these advisors who match your profile and career goals.
+                  {needsAnalysis 
+                    ? " This resume hasn't been analyzed yet. Please analyze it to find matching advisors." 
+                    : "We've analyzed your resume and found these advisors who match your profile and career goals."}
                 </Text>
                 {matchResult && (
                   <View className="mt-3 bg-blue-50 px-3 py-2 rounded-lg">
                     <Text className="text-blue-700 font-medium text-sm">
-                      {matchResult.advisors.length} advisor{matchResult.advisors.length !== 1 ? 's' : ''} found
+                      {needsAnalysis 
+                        ? "Resume not analyzed yet" 
+                        : `${matchResult.advisors.length} advisor${matchResult.advisors.length !== 1 ? 's' : ''} found`}
                     </Text>
                   </View>
                 )}
@@ -315,7 +342,7 @@ export default function MatchingScreen() {
             </View>
             
             {/* Sorting control */}
-            {!isLoading && !error && matchResult && matchResult.advisors.length > 0 && (
+            {!isLoading && !error && !needsAnalysis && matchResult && matchResult.advisors.length > 0 && (
               <View className="flex-row justify-end mb-4">
                 <TouchableOpacity 
                   className="flex-row items-center bg-white px-3 py-2 rounded-lg border border-gray-200"
@@ -331,11 +358,12 @@ export default function MatchingScreen() {
               </View>
             )}
             
-            {(isLoading && !isRefreshing) || (!error && !matchResult) ? renderLoading() : (
-              error ? renderError() : (
-                matchResult && matchResult.advisors.length === 0 ? renderNoMatches() : renderAdvisors()
-              )
-            )}
+            {/* Content based on state */}
+            {(isLoading && !isRefreshing) || (!error && !matchResult && !needsAnalysis) ? renderLoading() : 
+              needsAnalysis ? renderNeedsAnalysis() :
+                error ? renderError() : 
+                  matchResult && matchResult.advisors.length === 0 ? renderNoMatches() : 
+                    renderAdvisors()}
           </>
         )}
       </ScrollView>
