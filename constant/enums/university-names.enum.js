@@ -40,7 +40,6 @@ const UNIVERSITIES = {
   PIRI_REIS_UNIVERSITY: "Piri Reis University",
   CYPRUS_WEST_UNIVERSITY: "Cyprus West University",
   KIRIKKALE_UNIVERSITY: "Kırıkkale University",
-  UNKNOWN_PRIVATE: "Unknown/Private",
   AIR_FORCE_ACADEMY: "Hava Harp Okulu (Air Force Academy)",
   ANADOLU_UNIVERSITY: "Anadolu University",
   ISTANBUL_TECHNICAL_UNIVERSITY: "Istanbul Technical University",
