@@ -21,6 +21,8 @@ export default function HomeScreen() {
 
   // Fetch statistics from APIs
   const fetchStatistics = async (isRefresh = false) => {
+    console.log('Starting fetchStatistics, current stats:', stats);
+    
     if (isRefresh) {
       setIsRefreshing(true);
     } else {
@@ -34,6 +36,13 @@ export default function HomeScreen() {
     // Fetch resume count
     try {
       const resumeResponse = await resumeApi.getResumes();
+      console.log('Got resumes:', resumeResponse.resumes.length);
+      
+      // Log the status of each resume to debug
+      resumeResponse.resumes.forEach((resume, index) => {
+        console.log(`Resume ${index}: id=${resume._id}, status=${resume.status}`);
+      });
+      
       setStats(prev => ({
         ...prev,
         resumesUploaded: { 
@@ -43,7 +52,7 @@ export default function HomeScreen() {
         }
       }));
       
-      // If there are resumes, check for processed ones with match scores
+      // If there are resumes, check for matches regardless of status
       if (resumeResponse.resumes.length > 0) {
         try {
           // Set match score to loading while we check processed resumes
@@ -53,53 +62,62 @@ export default function HomeScreen() {
           }));
           
           let highestScore = 0;
-          let hasProcessedResumes = false;
+          let hasMatches = false;
           
-          // Filter for processed resumes first
-          const processedResumes = resumeResponse.resumes.filter(
-            resume => resume.status === 'processed'
-          );
-          
-          // Only proceed if we have processed resumes
-          if (processedResumes.length > 0) {
-            hasProcessedResumes = true;
-            
-            // Check each processed resume for matches
-            for (const resume of processedResumes) {
-              try {
-                const matchResult = await matchingApi.getMatchResults(resume._id);
+          // Check all resumes for matches instead of filtering by status
+          for (const resume of resumeResponse.resumes) {
+            try {
+              console.log(`Checking matches for resume ${resume._id} with status ${resume.status}`);
+              const matchResult = await matchingApi.getMatchResults(resume._id);
+              
+              // Make sure we have valid data and advisors
+              if (matchResult && matchResult.data && matchResult.data.advisors && 
+                  matchResult.data.advisors.length > 0) {
+                // We found at least one match
+                hasMatches = true;
                 
-                // Make sure we have valid data and advisors
-                if (matchResult && matchResult.data && matchResult.data.advisors && 
-                    matchResult.data.advisors.length > 0) {
-                  // Find highest score for this resume
-                  const resumeHighestScore = Math.max(
-                    ...matchResult.data.advisors.map(match => match.matchScore)
-                  );
-                  
-                  // Update overall highest score if this resume has a higher match
-                  if (resumeHighestScore > highestScore) {
-                    highestScore = resumeHighestScore;
-                  }
+                // Find highest score for this resume
+                const resumeHighestScore = Math.max(
+                  ...matchResult.data.advisors.map((match: any) => match.matchScore)
+                );
+                
+                console.log(`Highest score for resume ${resume._id}:`, resumeHighestScore);
+                
+                // Update overall highest score if this resume has a higher match
+                if (resumeHighestScore > highestScore) {
+                  highestScore = resumeHighestScore;
+                  console.log('New overall highest score:', highestScore);
                 }
-              } catch (error) {
+              } else {
+                console.log('No valid advisor matches in result for resume:', resume._id);
+              }
+            } catch (error: any) {
+              // Only log as error if it's not a 404 (which means not analyzed yet)
+              if (error.response && error.response.status === 404) {
+                console.log(`Resume ${resume._id} hasn't been analyzed yet`);
+              } else {
                 console.error(`Error fetching matches for resume ${resume._id}:`, error);
-                // Continue to next resume if one fails
               }
             }
           }
           
-          // Update UI with the highest score found or 0 if no processed resumes
-          setStats(prev => ({
-            ...prev,
-            matchScore: { 
-              value: highestScore,
-              loading: false,
-              error: false,
-              // Add a note to the state indicating if no processed resumes were found
-              noProcessedResumes: !hasProcessedResumes 
-            }
-          }));
+          // Update UI with the highest score found
+          console.log('Final highest score before state update:', highestScore);
+          
+          setStats(prev => {
+            const newStats = {
+              ...prev,
+              matchScore: { 
+                value: highestScore,
+                loading: false,
+                error: false,
+                // Only true if we checked all resumes and found no matches
+                noProcessedResumes: !hasMatches
+              }
+            };
+            console.log('Updated matchScore state:', newStats.matchScore);
+            return newStats;
+          });
         } catch (error) {
           console.error("Error processing matches:", error);
           setStats(prev => ({
@@ -136,7 +154,7 @@ export default function HomeScreen() {
   };
 
   // Render stat value with loading or error state
-  const renderStatValue = (stat: { value: number; loading: boolean; error: boolean; noProcessedResumes?: boolean }) => {
+  const renderStatValue = (stat: { value: number; loading: boolean; error: boolean; noProcessedResumes?: boolean }, isPercentage = false) => {
     if (stat.loading) {
       return <ActivityIndicator size="small" color="#1E3A8A" />;
     }
@@ -144,10 +162,19 @@ export default function HomeScreen() {
       return <Text className="text-red-500">--</Text>;
     }
     // Special case for match score when we have resumes but none are processed yet
-    if (stat.noProcessedResumes && stat === stats.matchScore) {
+    if (stat.noProcessedResumes) {
+      // Remove the object equality check which is causing the issue
       return <Text className="text-lg font-medium text-amber-500">--</Text>;
     }
-    return <Text className="text-2xl font-bold text-gray-800">{stat.value}</Text>;
+    
+    // Format the value as a whole number for percentages
+    const displayValue = isPercentage ? Math.round(stat.value) : stat.value;
+    
+    return (
+      <Text className="text-2xl font-bold text-gray-800">
+        {displayValue}{isPercentage ? '%' : ''}
+      </Text>
+    );
   };
 
   return (
@@ -208,8 +235,10 @@ export default function HomeScreen() {
               <View className="bg-yellow-100 w-14 h-14 rounded-full items-center justify-center mb-2">
                 <Ionicons name="star" size={24} color="#FBBF24" />
               </View>
-              {renderStatValue(stats.matchScore)}
-              <Text className="text-xs text-gray-500">Best Match %</Text>
+              {renderStatValue(stats.matchScore, true)}
+              <Text className="text-xs text-gray-500">
+                {stats.matchScore.value === 0 && stats.matchScore.noProcessedResumes ? "No Matches" : "Best Match"}
+              </Text>
             </View>
           </View>
         </Animated.View>
