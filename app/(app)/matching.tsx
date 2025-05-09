@@ -99,11 +99,14 @@ export default function MatchingScreen() {
   
   // Effect to fetch results on load
   useEffect(() => {
-    if (resumeId) {
-      fetchMatchResults();
-    } else {
-      fetchUserResumes();
-    }
+    const fetchData = async () => {
+      if (resumeId) {
+        await fetchMatchResults();
+      } else {
+        await fetchUserResumes();
+      }
+    };
+    fetchData();
   }, [resumeId]);
   
   // Handle resume selection
@@ -328,9 +331,9 @@ export default function MatchingScreen() {
               </View>
             )}
             
-            {isLoading && !isRefreshing ? renderLoading() : (
+            {(isLoading && !isRefreshing) || (!error && !matchResult) ? renderLoading() : (
               error ? renderError() : (
-                !matchResult || matchResult.advisors.length === 0 ? renderNoMatches() : renderAdvisors()
+                matchResult && matchResult.advisors.length === 0 ? renderNoMatches() : renderAdvisors()
               )
             )}
           </>

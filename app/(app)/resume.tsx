@@ -4,9 +4,10 @@ import { useAuth } from "@/context/auth-context";
 import { matchingApi } from "@/lib/api/matching";
 import { Resume, resumeApi } from "@/lib/api/resume";
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, Dimensions, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // LoadingOverlay component to show during analysis
@@ -278,10 +279,16 @@ export default function ResumeScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Fetch resumes on component mount
-  useEffect(() => {
-    fetchResumes();
-  }, []);
+  // Fetch resumes whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchResumes();
+      // Return cleanup function if needed
+      return () => {
+        // Any cleanup code
+      };
+    }, [])
+  );
   
   const fetchResumes = async (refresh = false) => {
     if (refresh) {

@@ -8,18 +8,18 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface SearchableDropdownProps {
@@ -387,7 +387,7 @@ export default function ResumeUploadScreen() {
                           {file.name}
                         </Text>
                         <Text className="text-gray-500 text-xs">
-                          {(file.size / 1024).toFixed(1)}KB
+                          {file.size ? (file.size / 1024).toFixed(1) + 'KB' : 'N/A'}
                         </Text>
                       </View>
                     </View>
