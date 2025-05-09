@@ -1,13 +1,272 @@
+import ENGINEERING_DISCIPLINES from '@/constant/enums/engineering-fields';
+import UNIVERSITIES from '@/constant/enums/university-names.enum';
 import { useAuth } from "@/context/auth-context";
 import { matchingApi } from "@/lib/api/matching";
 import { Resume, resumeApi } from "@/lib/api/resume";
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Animated, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import UNIVERSITIES from '@/constant/enums/university-names.enum';
-import ENGINEERING_DISCIPLINES from '@/constant/enums/engineering-fields';
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Dimensions, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+// LoadingOverlay component to show during analysis
+interface LoadingOverlayProps {
+  visible: boolean;
+}
+
+const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
+  const scaleValue = useRef(new Animated.Value(0.8)).current;
+  const rotateValue = useRef(new Animated.Value(0)).current;
+  const opacityValue = useRef(new Animated.Value(0)).current;
+  const pulseValue = useRef(new Animated.Value(1)).current;
+  const progressValue = useRef(new Animated.Value(0)).current;
+  const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Increase particles from 8 to 20 for a more immersive effect
+  const particles = useRef([...Array(20)].map(() => ({
+    position: new Animated.ValueXY({ x: 0, y: 0 }),
+    opacity: new Animated.Value(0),
+    size: Math.random() * 10 + 3, // Sizes from 3-13px for more variety
+    color: [
+      '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', 
+      '#2563EB', '#1D4ED8', '#DBEAFE', '#EFF6FF',
+      // Add more shades for variety
+      '#1E40AF', '#3B82F6', '#60A5FA', '#7DD3FC'
+    ][Math.floor(Math.random() * 12)],
+    // Add speed variation for more organic movement
+    speed: 0.7 + (Math.random() * 0.6), // Speed multiplier between 0.7-1.3
+  }))).current;
+  
+  useEffect(() => {
+    if (visible) {
+      // Reset progress animation
+      progressValue.setValue(0);
+      
+      // Background fade in
+      Animated.timing(backgroundOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      
+      // Entrance animation
+      Animated.parallel([
+        Animated.timing(opacityValue, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleValue, {
+          toValue: 1,
+          friction: 7,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      // Start rotation animation
+      Animated.loop(
+        Animated.timing(rotateValue, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        })
+      ).start();
+      
+      // Pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseValue, {
+            toValue: 1.05,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseValue, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+      
+      // Create infinite progress animation instead of one that completes
+      startIndefiniteProgressAnimation();
+      
+      // Animate all particles across the modal with more varied delays
+      particles.forEach((particle, index) => {
+        // More staggered delays to avoid particles all appearing at once
+        const delay = index * 150 + Math.random() * 800;
+        animateParticleRandomly(particle, delay);
+      });
+    } else {
+      // Exit animations
+      Animated.parallel([
+        Animated.timing(backgroundOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityValue, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  // Function for continuous progress animation
+  const startIndefiniteProgressAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(progressValue, {
+          toValue: 0.9, // Go to 90%
+          duration: 8000,
+          useNativeDriver: false,
+        }),
+        // Hold at 90% with slight pulsing
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(progressValue, {
+              toValue: 0.93,
+              duration: 800,
+              useNativeDriver: false,
+            }),
+            Animated.timing(progressValue, {
+              toValue: 0.9,
+              duration: 800,
+              useNativeDriver: false,
+            }),
+          ]),
+          { iterations: 3 }
+        ),
+      ])
+    ).start();
+  };
+  
+  // Function to animate particles with random movement
+  const animateParticleRandomly = (particle: {
+    position: Animated.ValueXY;
+    opacity: Animated.Value;
+    size: number;
+    color: string;
+    speed: number;
+  }, delay: number) => {
+    // Generate random starting position with wider distribution
+    const startX = (Math.random() * 320) - 160; // -160 to 160 (wider range)
+    const startY = (Math.random() * 400) - 150; // -150 to 250 (wider range)
+    
+    // Particles always move upward but with some horizontal variation
+    const endX = startX + (Math.random() * 100 - 50); // +/- 50 from start (more variation)
+    const endY = startY - (100 + Math.random() * 200); // Move up 100-300px (more variation)
+    
+    particle.position.setValue({ x: startX, y: startY });
+    particle.opacity.setValue(0);
+    
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(particle.opacity, {
+            toValue: 0.7 + (Math.random() * 0.3), // Random opacity 0.7-1.0
+            duration: 800 + Math.random() * 1200, // Random duration
+            useNativeDriver: true,
+          }),
+          Animated.timing(particle.position, {
+            toValue: { x: endX, y: endY },
+            // Use the particle's speed property to vary animation speed
+            duration: (3000 + Math.random() * 3000) / particle.speed,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(particle.opacity, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.delay(Math.random() * 1500), // Longer random delay for more varied timing
+      ])
+    ).start();
+  };
+  
+  const rotate = rotateValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+  
+  const progressWidthInterpolate = progressValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+  
+  return (
+    <Modal visible={visible} transparent animationType="none">
+      <Animated.View style={[styles.loadingOverlay, { opacity: backgroundOpacity }]}>
+        <Animated.View 
+          style={[
+            styles.loadingContent,
+            {
+              opacity: opacityValue,
+              transform: [
+                { scale: scaleValue },
+              ]
+            }
+          ]}
+        >
+          {/* Render all floating particles */}
+          {particles.map((particle, index) => (
+            <Animated.View 
+              key={index}
+              style={[
+                styles.particle,
+                { 
+                  width: particle.size,
+                  height: particle.size,
+                  backgroundColor: particle.color,
+                  opacity: particle.opacity,
+                  transform: [
+                    { translateX: particle.position.x },
+                    { translateY: particle.position.y }
+                  ] 
+                }
+              ]} 
+            />
+          ))}
+
+          <Animated.View 
+            style={[
+              styles.iconBackground,
+              { transform: [{ scale: pulseValue }] }
+            ]}
+          >
+            <View style={styles.iconGlow} />
+            <Animated.View style={[styles.iconContainer, { transform: [{ rotate }] }]}>
+              <Ionicons name="search-outline" size={56} color="#1E3A8A" />
+            </Animated.View>
+          </Animated.View>
+          
+          <View style={styles.textContainer}>
+            <Text style={styles.loadingTitle}>Analyzing Your Resume</Text>
+            <Text style={styles.loadingSubtitle}>
+              Our AI is processing your information to find the perfect advisor matches for you
+            </Text>
+          </View>
+          
+          <View style={styles.progressContainer}>
+            <Animated.View style={[styles.progressBar, { width: progressWidthInterpolate }]} />
+          </View>
+
+          <View style={styles.tipContainer}>
+            <Ionicons name="bulb-outline" size={16} color="#3B82F6" />
+            <Text style={styles.tipText}>
+              The more detailed your resume is, the better the matches will be
+            </Text>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
 
 export default function ResumeScreen() {
   const { user } = useAuth();
@@ -99,7 +358,8 @@ export default function ResumeScreen() {
       const response = await matchingApi.findMatches(selectedResumeId);
 
       if(response.data.success) {
-        Alert.alert("Success", "Resume analyzed successfully.");
+        // Don't show immediate alert as we'll navigate away
+        console.log("Resume analyzed successfully");
       } else {
         Alert.alert("Error", "Failed to analyze resume: " + response.message);
         return;
@@ -107,7 +367,7 @@ export default function ResumeScreen() {
       
       // Check if the resume was already analyzed
       if(response.data.alreadyProcessed) {
-        Alert.alert("Info", "This resume has already been analyzed. You can view the results now.");
+        console.log("Resume was already processed");
       }
       
       // Navigate to the matching results page (regardless of whether it's newly analyzed or already done)
@@ -228,20 +488,20 @@ export default function ResumeScreen() {
                 
                 <View className="mt-3 pt-3 border-t border-gray-100">
                   <View className="flex-row mb-2 items-center">
-                    <View className="w-7 h-7 bg-white rounded-full items-center justify-center mr-3" style={styles.iconContainer}>
+                    <View className="w-7 h-7 bg-white rounded-full items-center justify-center mr-3" style={styles.detailIconContainer}>
                       <Ionicons name="school-outline" size={16} color="#2563EB" />
                     </View>
                     <Text className="text-sm font-medium text-gray-700">
-                      {UNIVERSITIES[resume.university] || resume.university}
+                      {UNIVERSITIES[resume.university as keyof typeof UNIVERSITIES] || resume.university}
                     </Text>
                   </View>
                   
                   <View className="flex-row items-center">
-                    <View className="w-7 h-7 bg-white rounded-full items-center justify-center mr-3" style={styles.iconContainer}>
+                    <View className="w-7 h-7 bg-white rounded-full items-center justify-center mr-3" style={styles.detailIconContainer}>
                       <Ionicons name="code-outline" size={16} color="#2563EB" />
                     </View>
                     <Text className="text-sm font-medium text-gray-700">
-                      {ENGINEERING_DISCIPLINES[resume.engineeringField] || resume.engineeringField}
+                      {ENGINEERING_DISCIPLINES[resume.engineeringField as keyof typeof ENGINEERING_DISCIPLINES] || resume.engineeringField}
                     </Text>
                   </View>
                 </View>
@@ -284,47 +544,166 @@ export default function ResumeScreen() {
   };
   
   return (
-    <ScrollView 
-      className="flex-1 bg-gray-50"
-      contentContainerStyle={{ padding: 20 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={onRefresh}
-          colors={["#1E3A8A"]} // Android
-          tintColor="#1E3A8A" // iOS
-        />
-      }
-    >
-      <View className="mb-8 bg-white rounded-xl p-5 overflow-hidden" style={styles.headerCard}>
-        <View className="absolute top-0 right-0 opacity-5">
-          <Ionicons name="rocket" size={120} color="#1E3A8A" />
-        </View>
-        
-        <View className="flex-row items-center mb-2">
-          <View className="bg-primary w-10 h-10 rounded-lg items-center justify-center mr-3" style={styles.iconContainer}>
-            <View className="flex-row">
-              <Ionicons name="analytics-outline" size={20} color="#FFFFFF" />
-              <Ionicons name="stats-chart-outline" size={20} color="#FFFFFF" style={{marginLeft: -5}} />
+    <>
+      <ScrollView 
+        className="flex-1 bg-gray-50"
+        contentContainerStyle={{ padding: 20 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={["#1E3A8A"]} // Android
+            tintColor="#1E3A8A" // iOS
+          />
+        }
+      >
+        <View className="mb-8 bg-white rounded-xl p-5 overflow-hidden" style={styles.headerCard}>
+          <View className="absolute top-0 right-0 opacity-5">
+            <Ionicons name="rocket" size={120} color="#1E3A8A" />
+          </View>
+          
+          <View className="flex-row items-center mb-2">
+            <View className="bg-primary w-10 h-10 rounded-lg items-center justify-center mr-3" style={styles.detailIconContainer}>
+              <View className="flex-row">
+                <Ionicons name="analytics-outline" size={20} color="#FFFFFF" />
+                <Ionicons name="stats-chart-outline" size={20} color="#FFFFFF" style={{marginLeft: -5}} />
+              </View>
+            </View>
+            <View>
+              <Text className="text-3xl font-extrabold text-gray-800">Analyze Resumes</Text>
+              <View className="h-1 bg-primary rounded-full w-16 mt-1" />
             </View>
           </View>
-          <View>
-            <Text className="text-3xl font-extrabold text-gray-800">Analyze Resumes</Text>
-            <View className="h-1 bg-primary rounded-full w-16 mt-1" />
-          </View>
+          
+          <Text className="text-gray-600 mt-3 pl-1 text-base">
+            Select a resume to find matching advisors
+          </Text>
         </View>
         
-        <Text className="text-gray-600 mt-3 pl-1 text-base">
-          Select a resume to find matching advisors
-        </Text>
-      </View>
+        {renderResumes()}
+      </ScrollView>
       
-      {renderResumes()}
-    </ScrollView>
+      {/* Loading overlay during analysis */}
+      <LoadingOverlay visible={isAnalyzing} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  // ...existing styles...
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    width: Dimensions.get('window').width * 0.88,
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  iconBackground: {
+    width: 140,
+    height: 140,
+    backgroundColor: '#EBF5FF',
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 26,
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 6,
+    borderColor: '#DBEAFE',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  iconGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(30, 58, 138, 0.15)',
+    top: -10,
+    left: -10,
+  },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 50,
+    backgroundColor: 'rgba(219, 234, 254, 0.7)',
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  loadingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E3A8A',
+    marginBottom: 14,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: '85%',
+  },
+  progressContainer: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+  },
+  tipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    maxWidth: '90%',
+  },
+  tipText: {
+    color: '#3B82F6',
+    fontSize: 12,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  particle: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 999, // Fully rounded
+  },
   card: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -339,7 +718,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  iconContainer: {
+  detailIconContainer: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
