@@ -1,5 +1,6 @@
 import ENGINEERING_DISCIPLINES from '@/constant/enums/engineering-fields';
 import UNIVERSITIES from '@/constant/enums/university-names.enum';
+import { useAlert } from '@/context/alert-context';
 import { useAuth } from '@/context/auth-context';
 import { resumeApi } from '@/lib/api/resume';
 import { Ionicons } from '@expo/vector-icons';
@@ -153,6 +154,7 @@ const SearchableDropdown = ({
 
 export default function ResumeUploadScreen() {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const [title, setTitle] = useState('');
   const [selectedUniversityKey, setSelectedUniversityKey] = useState('');
   const [selectedUniversityValue, setSelectedUniversityValue] = useState('');
@@ -277,13 +279,19 @@ export default function ResumeUploadScreen() {
         title: title.trim() || undefined,
       });
       
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Resume uploaded successfully');
-      router.replace('/resume');
+      showAlert({
+        type: 'success',
+        title: 'Success',
+        message: 'Resume uploaded successfully',
+        onClose: () => router.replace('/resume')
+      });
     } catch (err: any) {
       console.error('Upload error:', err);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', err?.message || 'Failed to upload resume');
+      showAlert({
+        type: 'error',
+        title: 'Upload Failed',
+        message: err?.message || 'Failed to upload resume',
+      });
     } finally {
       setIsLoading(false);
     }

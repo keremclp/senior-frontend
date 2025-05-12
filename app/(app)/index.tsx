@@ -143,11 +143,12 @@ export default function HomeScreen() {
     }
   };
 
-  // Fetch data on component mount
+    // Fetch data on component mount
   useEffect(() => {
-    fetchStatistics();
-  }, []);
-
+    if (user) {  // Only fetch statistics if user is logged in
+      fetchStatistics();
+    }
+  }, [user]);  // Add user as a dependency
   // Handle refresh
   const onRefresh = () => {
     fetchStatistics(true);

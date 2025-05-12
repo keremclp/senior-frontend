@@ -1,5 +1,6 @@
 import ENGINEERING_DISCIPLINES from '@/constant/enums/engineering-fields';
 import UNIVERSITIES from '@/constant/enums/university-names.enum';
+import { useAlert } from '@/context/alert-context';
 import { useAuth } from "@/context/auth-context";
 import { matchingApi } from "@/lib/api/matching";
 import { Resume, resumeApi } from "@/lib/api/resume";
@@ -278,16 +279,18 @@ export default function ResumeScreen() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { showAlert } = useAlert();
   
   // Fetch resumes whenever the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchResumes();
-      // Return cleanup function if needed
+      if (user) {  // Only fetch resumes if user is authenticated
+        fetchResumes();
+      }
       return () => {
         // Any cleanup code
       };
-    }, [])
+    }, [user])  // Add user as a dependency
   );
   
   const fetchResumes = async (refresh = false) => {
@@ -323,36 +326,42 @@ export default function ResumeScreen() {
   const handleDeleteResume = async (resumeId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    Alert.alert(
-      "Delete Resume",
-      "Are you sure you want to delete this resume?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            setIsDeleting(resumeId);
-            try {
-              await resumeApi.deleteResume(resumeId);
-              
-              // Remove the deleted resume from the state
-              setResumes(resumes.filter(resume => resume._id !== resumeId));
-              
-              // If the deleted resume was selected, clear the selection
-              if (selectedResumeId === resumeId) {
-                setSelectedResumeId(null);
-              }
-            } catch (err: any) {
-              Alert.alert("Error", "Failed to delete resume: " + (err?.message || "Unknown error"));
-              console.error("Error deleting resume:", err);
-            } finally {
-              setIsDeleting(null);
-            }
+    showAlert({
+      type: 'error',
+      title: 'Delete Resume',
+      message: 'Are you sure you want to delete this resume?',
+      showConfirm: true,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setIsDeleting(resumeId);
+        try {
+          await resumeApi.deleteResume(resumeId);
+          
+          // Remove the deleted resume from the state
+          setResumes(resumes.filter(resume => resume._id !== resumeId));
+          
+          // If the deleted resume was selected, clear the selection
+          if (selectedResumeId === resumeId) {
+            setSelectedResumeId(null);
           }
+          
+          showAlert({
+            type: 'success',
+            message: 'Resume deleted successfully'
+          });
+        } catch (err: any) {
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to delete resume: ' + (err?.message || 'Unknown error')
+          });
+          console.error("Error deleting resume:", err);
+        } finally {
+          setIsDeleting(null);
         }
-      ]
-    );
+      }
+    });
   };
   
   const handleAnalyzeResume = async () => {

@@ -1,3 +1,4 @@
+import { useAlert } from '@/context/alert-context';
 import { useAuth } from "@/context/auth-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
@@ -6,33 +7,28 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 
 export default function ProfileScreen() {
   const { user, logout, isLoading } = useAuth();
+  const { showAlert } = useAlert();
   const [loggingOut, setLoggingOut] = useState(false);
   
   const handleLogout = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            setLoggingOut(true);
-            try {
-              await logout();
-            } finally {
-              setLoggingOut(false);
-            }
-          }
+    showAlert({
+      type: 'warning',
+      title: 'Log Out',
+      message: 'Are you sure you want to log out?',
+      showConfirm: true,
+      confirmText: 'Log Out',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setLoggingOut(true);
+        try {
+          await logout();
+        } finally {
+          setLoggingOut(false);
         }
-      ]
-    );
+      }
+    });
   };
   
   return (
