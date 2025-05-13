@@ -5,7 +5,7 @@ import { Resume, resumeApi } from '@/lib/api/resume';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function MatchingScreen() {
@@ -18,6 +18,10 @@ export default function MatchingScreen() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [needsAnalysis, setNeedsAnalysis] = useState(false);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const advisorsPerPage = 5;
+  
   // State for resumes
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loadingResumes, setLoadingResumes] = useState(false);
@@ -26,6 +30,14 @@ export default function MatchingScreen() {
   // State for modal
   const [selectedAdvisor, setSelectedAdvisor] = useState<AdvisorMatch | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  
+  // Add ref for ScrollView
+  const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Reset pagination when resumeId changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [resumeId]);
   
   // Fetch user's resumes when no resumeId is provided
   const fetchUserResumes = async () => {
@@ -146,6 +158,31 @@ export default function MatchingScreen() {
       })
     : [];
   
+  // Get current page advisors
+  const indexOfLastAdvisor = currentPage * advisorsPerPage;
+  const indexOfFirstAdvisor = indexOfLastAdvisor - advisorsPerPage;
+  const currentAdvisors = sortedAdvisors.slice(indexOfFirstAdvisor, indexOfLastAdvisor);
+  const totalPages = Math.ceil(sortedAdvisors.length / advisorsPerPage);
+  
+  // Pagination control handlers - updated to use React Native scrolling
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(currentPage + 1);
+      // Scroll to top using React Native's scrollTo
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+  
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(currentPage - 1);
+      // Scroll to top using React Native's scrollTo
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+  
   // Handler for advisor selection - updated to show modal instead of Alert
   const handleAdvisorSelect = (advisor: AdvisorMatch) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -208,13 +245,44 @@ export default function MatchingScreen() {
   
   const renderAdvisors = () => (
     <View>
-      {sortedAdvisors.map((match) => (
+      {currentAdvisors.map((match) => (
         <AdvisorCard 
           key={match._id.toString()} 
           match={match} 
           onPress={() => handleAdvisorSelect(match)} 
         />
       ))}
+      
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <View className="flex-row justify-between items-center mt-6 mb-2 bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100">
+          <TouchableOpacity 
+            onPress={goToPrevPage}
+            disabled={currentPage === 1}
+            className={`p-2 rounded-md ${currentPage === 1 ? 'opacity-50' : ''}`}
+          >
+            <View className="flex-row items-center">
+              <Ionicons name="chevron-back" size={18} color={currentPage === 1 ? "#9CA3AF" : "#1E3A8A"} />
+              <Text className={`ml-1 ${currentPage === 1 ? 'text-gray-400' : 'text-primary'}`}>Previous</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <View className="flex-row items-center">
+            <Text className="text-gray-600 font-medium">Page {currentPage} of {totalPages}</Text>
+          </View>
+          
+          <TouchableOpacity 
+            onPress={goToNextPage}
+            disabled={currentPage === totalPages}
+            className={`p-2 rounded-md ${currentPage === totalPages ? 'opacity-50' : ''}`}
+          >
+            <View className="flex-row items-center">
+              <Text className={`mr-1 ${currentPage === totalPages ? 'text-gray-400' : 'text-primary'}`}>Next</Text>
+              <Ionicons name="chevron-forward" size={18} color={currentPage === totalPages ? "#9CA3AF" : "#1E3A8A"} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
   
@@ -286,6 +354,7 @@ export default function MatchingScreen() {
   return (
     <>
       <ScrollView 
+        ref={scrollViewRef}
         className="flex-1 bg-gray-50"
         contentContainerStyle={{ padding: 16 }}
         refreshControl={
