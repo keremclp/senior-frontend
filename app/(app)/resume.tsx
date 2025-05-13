@@ -9,41 +9,445 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Dimensions, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Dimensions, Easing, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // LoadingOverlay component to show during analysis
 interface LoadingOverlayProps {
   visible: boolean;
 }
 
+// Define waypoint interface for natural scanning
+interface ScanWaypoint {
+  id: string;
+  x: number;
+  y: number;
+  section: string;
+  focusLevel: number; // 0-1 where 1 is high focus (longer pause)
+  title: string;
+}
+
 const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
   const scaleValue = useRef(new Animated.Value(0.8)).current;
-  const rotateValue = useRef(new Animated.Value(0)).current;
   const opacityValue = useRef(new Animated.Value(0)).current;
-  const pulseValue = useRef(new Animated.Value(1)).current;
-  const progressValue = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  const magnifierPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const magnifierScale = useRef(new Animated.Value(1)).current;
+  const magnifierRotation = useRef(new Animated.Value(0)).current;
+  const highlightOpacity = useRef(new Animated.Value(0)).current;
+  const highlightScale = useRef(new Animated.Value(1)).current;
+  const statusTextOpacity = useRef(new Animated.Value(1)).current;
   
-  // Increase particles from 8 to 20 for a more immersive effect
-  const particles = useRef([...Array(20)].map(() => ({
+  // Resume scan status state
+  const [scanStatus, setScanStatus] = useState("Initializing analysis...");
+  
+  // Track current waypoint for animation state
+  const [currentWaypointIndex, setCurrentWaypointIndex] = useState(0);
+  const currentAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  
+  // Define resume container dimensions for calculation
+  const resumeWidth = 240;
+  const resumeHeight = 340;
+  
+  // Create waypoints for more natural, human-like scanning
+  // x and y values are relative to the center of the resume container
+  const scanWaypoints: ScanWaypoint[] = [
+    // Header section scanning
+    { id: 'name', x: -80, y: 0, section: 'header', focusLevel: 0.7, title: 'Analyzing personal details...' },
+    { id: 'contact', x: 40, y: 10, section: 'header', focusLevel: 0.5, title: 'Reading contact information...' },
+    
+    // Experience section - multiple points of interest
+    { id: 'exp-title', x: -90, y: 60, section: 'experience', focusLevel: 0.6, title: 'Analyzing work experience...' },
+    { id: 'exp-company1', x: -40, y: 70, section: 'experience', focusLevel: 0.9, title: 'Evaluating job history...' },
+    { id: 'exp-desc1', x: 30, y: 80, section: 'experience', focusLevel: 0.8, title: 'Examining responsibilities...' },
+    { id: 'exp-company2', x: -50, y: 100, section: 'experience', focusLevel: 0.7, title: 'Reviewing career progression...' },
+    { id: 'exp-desc2', x: 60, y: 110, section: 'experience', focusLevel: 0.8, title: 'Identifying achievements...' },
+    
+    // Skills section - scan across different skills
+    { id: 'skills-title', x: -70, y: 150, section: 'skills', focusLevel: 0.6, title: 'Extracting skill set...' },
+    { id: 'skills-1', x: -40, y: 160, section: 'skills', focusLevel: 0.8, title: 'Analyzing technical skills...' },
+    { id: 'skills-2', x: 10, y: 165, section: 'skills', focusLevel: 0.7, title: 'Identifying key competencies...' },
+    { id: 'skills-3', x: 60, y: 162, section: 'skills', focusLevel: 0.8, title: 'Matching skills to advisors...' },
+    
+    // Education section
+    { id: 'edu-title', x: -80, y: 220, section: 'education', focusLevel: 0.6, title: 'Reading education background...' },
+    { id: 'edu-university', x: -30, y: 230, section: 'education', focusLevel: 0.9, title: 'Analyzing academic credentials...' },
+    { id: 'edu-degree', x: 40, y: 235, section: 'education', focusLevel: 0.7, title: 'Checking degree relevance...' },
+    
+    // Projects section
+    { id: 'proj-title', x: -90, y: 290, section: 'projects', focusLevel: 0.5, title: 'Evaluating projects...' },
+    { id: 'proj-desc', x: -20, y: 300, section: 'projects', focusLevel: 0.8, title: 'Analyzing project achievements...' },
+    { id: 'proj-tech', x: 60, y: 315, section: 'projects', focusLevel: 0.7, title: 'Identifying technical expertise...' },
+  ];
+  
+  // Background particles for subtle effect (reduced number)
+  const particles = useRef([...Array(12)].map(() => ({
     position: new Animated.ValueXY({ x: 0, y: 0 }),
     opacity: new Animated.Value(0),
-    size: Math.random() * 10 + 3, // Sizes from 3-13px for more variety
+    size: Math.random() * 6 + 2, // Smaller particles
     color: [
-      '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', 
-      '#2563EB', '#1D4ED8', '#DBEAFE', '#EFF6FF',
-      // Add more shades for variety
-      '#1E40AF', '#3B82F6', '#60A5FA', '#7DD3FC'
-    ][Math.floor(Math.random() * 12)],
-    // Add speed variation for more organic movement
-    speed: 0.7 + (Math.random() * 0.6), // Speed multiplier between 0.7-1.3
+      '#3B82F6', '#60A5FA', '#DBEAFE', '#EFF6FF',
+      '#2563EB', '#1D4ED8'
+    ][Math.floor(Math.random() * 6)],
+    speed: 0.7 + (Math.random() * 0.6),
   }))).current;
   
-  useEffect(() => {
-    if (visible) {
-      // Reset progress animation
-      progressValue.setValue(0);
+  // Function to add slight randomization to waypoint values
+  const randomizeWaypoint = (waypoint: ScanWaypoint) => {
+    // Add small random variations to create unpredictable movement
+    // but keep within reasonable bounds
+    const randomX = waypoint.x + (Math.random() * 15 - 7.5); // +/- 7.5px
+    const randomY = waypoint.y + (Math.random() * 10 - 5); // +/- 5px
+    
+    // Slightly randomize focus for unpredictability
+    const randomFocus = Math.min(1, Math.max(0.2, 
+      waypoint.focusLevel + (Math.random() * 0.2 - 0.1))); // +/- 0.1
+    
+    return {
+      ...waypoint,
+      x: randomX,
+      y: randomY,
+      focusLevel: randomFocus
+    };
+  };
+  
+  // Create a natural scanning motion between two waypoints with bezier-like curves
+  const createWaypointMotion = (fromWaypoint: ScanWaypoint, toWaypoint: ScanWaypoint, isStarting: boolean = false) => {
+    const randomizedTo = randomizeWaypoint(toWaypoint);
+    
+    // Calculate a control point for bezier-like motion
+    // Random offset for the control point creates variation in paths
+    const controlPointOffset = {
+      x: (Math.random() - 0.5) * 40, // Random x offset
+      y: (Math.random() - 0.5) * 30  // Random y offset
+    };
+    
+    // Midpoint between waypoints serves as base for control point
+    const midX = (fromWaypoint.x + randomizedTo.x) / 2;
+    const midY = (fromWaypoint.y + randomizedTo.y) / 2;
+    
+    // Generate animation steps
+    const motionSteps = [];
+    
+    // If this is a starting motion, add a brief fade-in and shrink/expand effect
+    if (isStarting) {
+      motionSteps.push(
+        // Start magnifier at the from position
+        Animated.timing(magnifierPosition, {
+          toValue: { x: fromWaypoint.x, y: fromWaypoint.y },
+          duration: 50, // Quick reset
+          useNativeDriver: true,
+        }),
+        
+        // Fade in and grow
+        Animated.parallel([
+          Animated.timing(magnifierScale, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.elastic(1.2),
+            useNativeDriver: true,
+          }),
+          Animated.timing(highlightOpacity, {
+            toValue: 0.3 + fromWaypoint.focusLevel * 0.4,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+    }
+    
+    // Update the scan status text based on the destination waypoint
+    motionSteps.push(
+      Animated.sequence([
+        // First fade out the current text
+        Animated.timing(statusTextOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        // Then change the text and fade back in
+        Animated.timing(statusTextOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    
+    // Calculate the distance to determine duration
+    const distance = Math.sqrt(
+      Math.pow(randomizedTo.x - fromWaypoint.x, 2) + 
+      Math.pow(randomizedTo.y - fromWaypoint.y, 2)
+    );
+    
+    // Base duration on distance to ensure consistent movement speed
+    // Add random variation to movement speed (80-120% of base speed)
+    const speedFactor = 0.8 + (Math.random() * 0.4);
+    const baseDuration = 400 + (distance * 8); // Slower for longer distances
+    const duration = baseDuration * speedFactor;
+    
+    // Create the main movement animation with small variations
+    motionSteps.push(
+      Animated.parallel([
+        // Position animation - movement path
+        Animated.timing(magnifierPosition, {
+          toValue: { x: randomizedTo.x, y: randomizedTo.y },
+          duration: duration,
+          easing: Easing.bezier(0.33, 1, 0.68, 1), // Custom easing for natural motion
+          useNativeDriver: true,
+        }),
+        
+        // Subtle rotation during movement
+        Animated.sequence([
+          Animated.timing(magnifierRotation, {
+            toValue: (Math.random() - 0.5) * 0.15, // Slight random rotation (-0.075 to +0.075 radians)
+            duration: duration * 0.5,
+            easing: Easing.out(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(magnifierRotation, {
+            toValue: (Math.random() - 0.5) * 0.15, // Another slight random rotation
+            duration: duration * 0.5,
+            easing: Easing.in(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ]),
+        
+        // Subtle scale changes during movement
+        Animated.sequence([
+          Animated.timing(magnifierScale, {
+            toValue: 0.95 + (Math.random() * 0.1), // Random scale between 0.95-1.05
+            duration: duration * 0.5,
+            useNativeDriver: true,
+          }),
+          Animated.timing(magnifierScale, {
+            toValue: 1,
+            duration: duration * 0.5,
+            useNativeDriver: true,
+          }),
+        ]),
+        
+        // Highlight effects that follow the magnifier
+        Animated.timing(highlightScale, {
+          toValue: 0.9 + (Math.random() * 0.2), // Random scale variation
+          duration: duration,
+          useNativeDriver: true,
+        }),
+        
+        // Change highlight opacity based on movement
+        Animated.sequence([
+          Animated.timing(highlightOpacity, {
+            toValue: 0.3 + (Math.random() * 0.2), // Base opacity during movement
+            duration: duration * 0.3,
+            useNativeDriver: true,
+          }),
+          Animated.timing(highlightOpacity, {
+            toValue: 0.2 + (Math.random() * 0.3), // Varied opacity
+            duration: duration * 0.4,
+            useNativeDriver: true,
+          }),
+          Animated.timing(highlightOpacity, {
+            toValue: 0.3 + (randomizedTo.focusLevel * 0.4), // Higher opacity at destination
+            duration: duration * 0.3,
+            useNativeDriver: true, 
+          }),
+        ]),
+      ])
+    );
+    
+    // Add a pause at the destination based on its focus level
+    // Higher focus = longer pause time
+    const focusDuration = randomizedTo.focusLevel * 1200; // 0-1200ms based on focus level
+    if (focusDuration > 200) { // Only pause if focus level is high enough
+      motionSteps.push(
+        Animated.parallel([
+          // While paused, create a subtle "examining" effect
+          Animated.sequence([
+            // Zoom in slightly when focusing
+            Animated.timing(magnifierScale, {
+              toValue: 1.05 + (randomizedTo.focusLevel * 0.1), // More zoom for higher focus
+              duration: 300,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            
+            // Hold the zoom for a moment
+            Animated.timing(magnifierScale, {
+              toValue: 1.05 + (randomizedTo.focusLevel * 0.1),
+              duration: focusDuration - 600, // Adjusted for the zoom in/out animations
+              useNativeDriver: true,
+            }),
+            
+            // Zoom back out
+            Animated.timing(magnifierScale, {
+              toValue: 1,
+              duration: 300,
+              easing: Easing.in(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+          
+          // Enhance highlight during focus
+          Animated.sequence([
+            Animated.timing(highlightOpacity, {
+              toValue: 0.3 + (randomizedTo.focusLevel * 0.5), // Higher opacity for focus
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(highlightOpacity, {
+              toValue: 0.3 + (randomizedTo.focusLevel * 0.5),
+              duration: focusDuration - 600,
+              useNativeDriver: true,
+            }),
+            Animated.timing(highlightOpacity, {
+              toValue: 0.3,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]),
+          
+          // Subtle pulsing effect on highlight during focus
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(highlightScale, {
+                toValue: 1 + (randomizedTo.focusLevel * 0.15),
+                duration: 400,
+                easing: Easing.inOut(Easing.sin),
+                useNativeDriver: true,
+              }),
+              Animated.timing(highlightScale, {
+                toValue: 0.95 + (randomizedTo.focusLevel * 0.05),
+                duration: 400,
+                easing: Easing.inOut(Easing.sin),
+                useNativeDriver: true,
+              }),
+            ]),
+            { iterations: Math.ceil(focusDuration / 800) }
+          ),
+          
+          // Small rotation fidgets during focus
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(magnifierRotation, {
+                toValue: (Math.random() - 0.5) * 0.1 * randomizedTo.focusLevel,
+                duration: 300,
+                useNativeDriver: true,
+              }),
+              Animated.timing(magnifierRotation, {
+                toValue: (Math.random() - 0.5) * 0.1 * randomizedTo.focusLevel,
+                duration: 300,
+                useNativeDriver: true,
+              }),
+            ]),
+            { iterations: Math.ceil(focusDuration / 600) }
+          ),
+        ])
+      );
+    }
+    
+    return Animated.sequence(motionSteps);
+  };
+  
+  // Create a complete scanning animation that moves through waypoints
+  const createHumanlikeScanning = () => {
+    // Start at a random waypoint to add variety
+    const startIndex = Math.floor(Math.random() * 4); // Random start position
+    
+    // Build a sequence that naturally moves through waypoints
+    const completeAnimation: Animated.CompositeAnimation[] = [];
+    
+    // Add the initial waypoint motion
+    completeAnimation.push(
+      createWaypointMotion(
+        scanWaypoints[startIndex], 
+        scanWaypoints[startIndex], 
+        true
+      )
+    );
+    
+    // Track the current waypoint index
+    let currentIndex = startIndex;
+    
+    // Create a natural path through ALL waypoints to ensure continuous movement
+    // We'll use all waypoints and then loop back to ensure magnifier stays on resume
+    for (let i = 0; i < scanWaypoints.length; i++) {
+      const fromWaypoint = scanWaypoints[currentIndex];
       
+      // Choose next waypoint - prefer moving forward but sometimes jump around
+      let nextIndex;
+      if (Math.random() > 0.9) {
+        // Occasionally jump to a random waypoint (10% chance)
+        nextIndex = Math.floor(Math.random() * scanWaypoints.length);
+      } else {
+        // Usually move to next waypoint or nearby one
+        nextIndex = currentIndex + 1;
+        if (nextIndex >= scanWaypoints.length) {
+          // Loop back to beginning area with some randomness
+          nextIndex = Math.floor(Math.random() * 3);
+        }
+      }
+      
+      // Move to the next waypoint
+      completeAnimation.push(
+        createWaypointMotion(fromWaypoint, scanWaypoints[nextIndex])
+      );
+      
+      currentIndex = nextIndex;
+    }
+    
+    // Make the scanning loop continuously with infinite iterations
+    return Animated.loop(
+      Animated.sequence(completeAnimation),
+      { iterations: -1 } // Ensure it never stops
+    );
+  };
+  
+  useEffect(() => {
+    let scanningAnimation: Animated.CompositeAnimation | null = null;
+    let statusUpdateInterval: NodeJS.Timeout | number | null = null;
+    
+    // Always create and run the scanning animation when the component mounts
+    // This ensures the magnifier is always scanning, even when modal is not visible
+    const startScanning = () => {
+      // Reset position to prepare for animation
+      magnifierPosition.setValue({ x: -120, y: 0 });
+      magnifierScale.setValue(1);
+      magnifierRotation.setValue(0);
+      highlightScale.setValue(1);
+      highlightOpacity.setValue(0);
+      
+      // Start scanning animation
+      scanningAnimation = createHumanlikeScanning() as Animated.CompositeAnimation;
+      scanningAnimation.start();
+      currentAnimationRef.current = scanningAnimation;
+      
+      // Update status text based on magnifier position
+      statusUpdateInterval = setInterval(() => {
+        const currentX = Number(JSON.stringify(magnifierPosition.x));
+        const currentY = Number(JSON.stringify(magnifierPosition.y));
+        
+        // Find which section we're closest to scanning
+        let closestDistance = Infinity;
+        let closestWaypoint = scanWaypoints[0];
+        
+        scanWaypoints.forEach(waypoint => {
+          const distance = Math.sqrt(
+            Math.pow(waypoint.x - currentX, 2) + 
+            Math.pow(waypoint.y - currentY, 2)
+          );
+          
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestWaypoint = waypoint;
+          }
+        });
+        
+        if (closestWaypoint) {
+          setScanStatus(closestWaypoint.title);
+        }
+      }, 100);
+    };
+    
+    if (visible) {
       // Background fade in
       Animated.timing(backgroundOpacity, {
         toValue: 1,
@@ -66,42 +470,18 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
         }),
       ]).start();
       
-      // Start rotation animation
-      Animated.loop(
-        Animated.timing(rotateValue, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: true,
-        })
-      ).start();
+      // Start or ensure scanning animation is running
+      if (!currentAnimationRef.current) {
+        startScanning();
+      }
       
-      // Pulse animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseValue, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseValue, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-      
-      // Create infinite progress animation instead of one that completes
-      startIndefiniteProgressAnimation();
-      
-      // Animate all particles across the modal with more varied delays
+      // Animate background particles
       particles.forEach((particle, index) => {
-        // More staggered delays to avoid particles all appearing at once
         const delay = index * 150 + Math.random() * 800;
         animateParticleRandomly(particle, delay);
       });
     } else {
-      // Exit animations
+      // Exit animations for modal
       Animated.parallel([
         Animated.timing(backgroundOpacity, {
           toValue: 0,
@@ -114,39 +494,24 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
           useNativeDriver: true,
         }),
       ]).start();
+      
+      // DO NOT stop the animation when the modal is hidden
+      // Let it continue running in the background
     }
+    
+    // Only clean up animations on component unmount
+    return () => {
+      if (currentAnimationRef.current) {
+        currentAnimationRef.current.stop();
+        currentAnimationRef.current = null;
+      }
+      if (statusUpdateInterval) {
+        clearInterval(statusUpdateInterval);
+      }
+    };
   }, [visible]);
-
-  // Function for continuous progress animation
-  const startIndefiniteProgressAnimation = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(progressValue, {
-          toValue: 0.9, // Go to 90%
-          duration: 8000,
-          useNativeDriver: false,
-        }),
-        // Hold at 90% with slight pulsing
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(progressValue, {
-              toValue: 0.93,
-              duration: 800,
-              useNativeDriver: false,
-            }),
-            Animated.timing(progressValue, {
-              toValue: 0.9,
-              duration: 800,
-              useNativeDriver: false,
-            }),
-          ]),
-          { iterations: 3 }
-        ),
-      ])
-    ).start();
-  };
   
-  // Function to animate particles with random movement
+  // Function to animate particles with random movement (simplified)
   const animateParticleRandomly = (particle: {
     position: Animated.ValueXY;
     opacity: Animated.Value;
@@ -154,13 +519,11 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
     color: string;
     speed: number;
   }, delay: number) => {
-    // Generate random starting position with wider distribution
-    const startX = (Math.random() * 320) - 160; // -160 to 160 (wider range)
-    const startY = (Math.random() * 400) - 150; // -150 to 250 (wider range)
+    const startX = (Math.random() * 320) - 160;
+    const startY = (Math.random() * 400) - 150;
     
-    // Particles always move upward but with some horizontal variation
-    const endX = startX + (Math.random() * 100 - 50); // +/- 50 from start (more variation)
-    const endY = startY - (100 + Math.random() * 200); // Move up 100-300px (more variation)
+    const endX = startX + (Math.random() * 100 - 50);
+    const endY = startY - (100 + Math.random() * 200);
     
     particle.position.setValue({ x: startX, y: startY });
     particle.opacity.setValue(0);
@@ -170,13 +533,12 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
         Animated.delay(delay),
         Animated.parallel([
           Animated.timing(particle.opacity, {
-            toValue: 0.7 + (Math.random() * 0.3), // Random opacity 0.7-1.0
-            duration: 800 + Math.random() * 1200, // Random duration
+            toValue: 0.7,
+            duration: 800,
             useNativeDriver: true,
           }),
           Animated.timing(particle.position, {
             toValue: { x: endX, y: endY },
-            // Use the particle's speed property to vary animation speed
             duration: (3000 + Math.random() * 3000) / particle.speed,
             useNativeDriver: true,
           }),
@@ -186,20 +548,20 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
           duration: 800,
           useNativeDriver: true,
         }),
-        Animated.delay(Math.random() * 1500), // Longer random delay for more varied timing
+        Animated.delay(Math.random() * 1500),
       ])
     ).start();
   };
   
-  const rotate = rotateValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+  // Convert rotation value to interpolated string for transform
+  const magnifierRotateStr = magnifierRotation.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-15deg', '15deg']
   });
   
-  const progressWidthInterpolate = progressValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  // Highlight should follow magnifier position with slight smoothing/delay
+  const highlightTranslateX = magnifierPosition.x;
+  const highlightTranslateY = magnifierPosition.y;
   
   return (
     <Modal visible={visible} transparent animationType="none">
@@ -215,7 +577,7 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
             }
           ]}
         >
-          {/* Render all floating particles */}
+          {/* Background particles */}
           {particles.map((particle, index) => (
             <Animated.View 
               key={index}
@@ -235,35 +597,105 @@ const LoadingOverlay = ({ visible }: LoadingOverlayProps) => {
             />
           ))}
 
-          <Animated.View 
-            style={[
-              styles.iconBackground,
-              { transform: [{ scale: pulseValue }] }
-            ]}
-          >
-            <View style={styles.iconGlow} />
-            <Animated.View style={[styles.iconContainer, { transform: [{ rotate }] }]}>
-              <Ionicons name="search-outline" size={56} color="#1E3A8A" />
+          <Text style={styles.loadingTitle}>AI Resume Analysis</Text>
+          
+          {/* Resume skeleton UI */}
+          <View style={styles.resumeContainer}>
+            {/* Header section */}
+            <View style={styles.resumeHeader}>
+              <View style={styles.resumeNamePlaceholder} />
+              <View style={styles.resumeContactPlaceholder} />
+            </View>
+            
+            {/* Experience section */}
+            <View style={styles.resumeSection}>
+              <View style={styles.resumeSectionTitle} />
+              <View style={styles.resumeEntryContainer}>
+                <View style={styles.resumeEntryTitle} />
+                <View style={styles.resumeEntrySubtitle} />
+                <View style={styles.resumeEntryDescription} />
+              </View>
+              <View style={styles.resumeEntryContainer}>
+                <View style={styles.resumeEntryTitle} />
+                <View style={styles.resumeEntrySubtitle} />
+                <View style={styles.resumeEntryDescription} />
+              </View>
+            </View>
+            
+            {/* Skills section */}
+            <View style={styles.resumeSection}>
+              <View style={styles.resumeSectionTitle} />
+              <View style={styles.skillsContainer}>
+                {[...Array(8)].map((_, i) => (
+                  <View key={i} style={styles.skillPill} />
+                ))}
+              </View>
+            </View>
+            
+            {/* Education section */}
+            <View style={styles.resumeSection}>
+              <View style={styles.resumeSectionTitle} />
+              <View style={styles.resumeEntryContainer}>
+                <View style={styles.resumeEntryTitle} />
+                <View style={styles.resumeEntrySubtitle} />
+              </View>
+            </View>
+            
+            {/* Projects section */}
+            <View style={styles.resumeSection}>
+              <View style={styles.resumeSectionTitle} />
+              <View style={styles.resumeEntryContainer}>
+                <View style={styles.resumeEntryTitle} />
+                <View style={styles.resumeEntryDescription} />
+              </View>
+            </View>
+            
+            {/* Enhanced circular scanning highlight effect */}
+            <Animated.View 
+              style={[
+                styles.scanningHighlight,
+                {
+                  opacity: highlightOpacity,
+                  transform: [
+                    { translateX: highlightTranslateX },
+                    { translateY: highlightTranslateY },
+                    { scale: highlightScale }
+                  ]
+                }
+              ]}
+            />
+            
+            {/* Enlarged moving magnifying glass with rotation */}
+            <Animated.View
+              style={[
+                styles.magnifierContainer,
+                {
+                  transform: [
+                    { translateX: magnifierPosition.x },
+                    { translateY: magnifierPosition.y },
+                    { scale: magnifierScale },
+                    { rotate: magnifierRotateStr }
+                  ]
+                }
+              ]}
+            >
+              <View style={styles.magnifierInner}>
+                <Ionicons name="search" size={28} color="#1E3A8A" />
+              </View>
             </Animated.View>
+          </View>
+          
+          {/* Dynamic status text */}
+          <Animated.View style={{ opacity: statusTextOpacity, marginTop: 20 }}>
+            <View style={styles.statusTextContainer}>
+              <Ionicons name="scan-outline" size={16} color="#3B82F6" />
+              <Text style={styles.statusText}>{scanStatus}</Text>
+            </View>
           </Animated.View>
           
-          <View style={styles.textContainer}>
-            <Text style={styles.loadingTitle}>Analyzing Your Resume</Text>
-            <Text style={styles.loadingSubtitle}>
-              Our AI is processing your information to find the perfect advisor matches for you
-            </Text>
-          </View>
-          
-          <View style={styles.progressContainer}>
-            <Animated.View style={[styles.progressBar, { width: progressWidthInterpolate }]} />
-          </View>
-
-          <View style={styles.tipContainer}>
-            <Ionicons name="bulb-outline" size={16} color="#3B82F6" />
-            <Text style={styles.tipText}>
-              The more detailed your resume is, the better the matches will be
-            </Text>
-          </View>
+          <Text style={styles.loadingSubtitle}>
+            Our AI is processing your resume to identify the best advisor matches based on your experience and skills
+          </Text>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -617,7 +1049,7 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width * 0.88,
     backgroundColor: 'white',
     borderRadius: 24,
-    padding: 30,
+    padding: 25,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -627,99 +1059,154 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  iconBackground: {
-    width: 140,
-    height: 140,
-    backgroundColor: '#EBF5FF',
-    borderRadius: 70,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 26,
-    shadowColor: '#1E3A8A',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 8,
-    borderWidth: 6,
-    borderColor: '#DBEAFE',
-    position: 'relative',
-    overflow: 'visible',
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: 'rgba(30, 58, 138, 0.15)',
-    top: -10,
-    left: -10,
-  },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 50,
-    backgroundColor: 'rgba(219, 234, 254, 0.7)',
-  },
-  textContainer: {
-    alignItems: 'center',
-    marginBottom: 25,
-  },
   loadingTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1E3A8A',
-    marginBottom: 14,
+    marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   loadingSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     maxWidth: '85%',
+    marginTop: 20,
   },
-  progressContainer: {
-    width: '100%',
-    height: 6,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 6,
-  },
-  tipContainer: {
+  statusTextContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F0F9FF',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    maxWidth: '90%',
   },
-  tipText: {
+  statusText: {
     color: '#3B82F6',
-    fontSize: 12,
+    fontSize: 13,
     marginLeft: 6,
     fontWeight: '500',
   },
+  resumeContainer: {
+    width: 280,
+    height: 360,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  resumeHeader: {
+    marginBottom: 20,
+  },
+  resumeNamePlaceholder: {
+    height: 18,
+    width: '70%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  resumeContactPlaceholder: {
+    height: 10,
+    width: '50%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+  },
+  resumeSection: {
+    marginBottom: 16,
+  },
+  resumeSectionTitle: {
+    height: 12,
+    width: '30%',
+    backgroundColor: '#D1D5DB',
+    borderRadius: 3,
+    marginBottom: 10,
+  },
+  resumeEntryContainer: {
+    marginBottom: 12,
+    paddingLeft: 5,
+  },
+  resumeEntryTitle: {
+    height: 10,
+    width: '60%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  resumeEntrySubtitle: {
+    height: 8,
+    width: '40%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    marginBottom: 6,
+  },
+  resumeEntryDescription: {
+    height: 6,
+    width: '80%',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    marginBottom: 4,
+  },
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingLeft: 5,
+  },
+  skillPill: {
+    height: 8,
+    width: 40,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    margin: 3,
+  },
+  magnifierContainer: {
+    position: 'absolute',
+    width: 50, // Increased from 40
+    height: 50, // Increased from 40
+    borderRadius: 25, // Half of width/height
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  magnifierInner: {
+    width: 46, // Increased from 36
+    height: 46, // Increased from 36
+    borderRadius: 23, // Half of width/height
+    backgroundColor: 'rgba(219, 234, 254, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    shadowColor: '#1E3A8A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  scanningHighlight: {
+    position: 'absolute',
+    width: 60, // Changed to match magnifier size
+    height: 60, // Changed to match magnifier size
+    borderRadius: 30, // Make it circular
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 3,
+  },
   particle: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 999, // Fully rounded
+    width: 4,
+    height: 4,
+    borderRadius: 999,
   },
+  // ...existing card styles and other styles remain...
   card: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
