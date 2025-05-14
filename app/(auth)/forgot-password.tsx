@@ -65,10 +65,10 @@ export default function ForgotPasswordScreen() {
           style={styles.gradientHeader}
         >
           <View className="items-center">
-            <View className="bg-white/20 w-20 h-20 rounded-full items-center justify-center mb-4">
+            <View className="bg-white/20 w-28 h-28 rounded-full items-center justify-center mb-4">
               <Image 
-                source={require('@/assets/images/react-logo.png')} 
-                className="w-12 h-12"
+                source={require('@/assets/images/logo.png')} 
+                className="w-24 h-24 rounded-full"
                 style={{ resizeMode: 'contain' }}
               />
             </View>

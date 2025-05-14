@@ -199,8 +199,8 @@ export default function HomeScreen() {
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Image 
-              source={require('@/assets/images/react-logo.png')} 
-              className="w-10 h-10 rounded-full mr-2"
+              source={require('@/assets/images/logo.png')} 
+              className="w-16 h-16 rounded-full mr-2"
               style={{ resizeMode: 'contain' }}
             />
             <Text className="text-white text-xl font-bold">ResumeMatch</Text>

@@ -1,11 +1,11 @@
 import { useAuth } from "@/context/auth-context";
 import { getPasswordStrength, getStrengthColor, getStrengthText, validateConfirmPassword, validateEmail, validateName, validatePassword } from "@/lib/utils/validation";
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 export default function RegisterScreen() {
@@ -103,10 +103,10 @@ export default function RegisterScreen() {
           style={styles.gradientHeader}
         >
           <View className="items-center">
-            <View className="bg-white/20 w-20 h-20 rounded-full items-center justify-center mb-3">
+            <View className="bg-white/20 w-28 h-28 rounded-full items-center justify-center mb-3">
               <Image 
-                source={require('@/assets/images/react-logo.png')} 
-                className="w-12 h-12"
+                source={require('@/assets/images/logo.png')} 
+                className="w-24 h-24 rounded-full"
                 style={{ resizeMode: 'contain' }}
               />
             </View>
