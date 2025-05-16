@@ -118,7 +118,7 @@ export default function ResetPasswordScreen() {
           <View className="items-center">
             <View className="bg-white/20 w-20 h-20 rounded-full items-center justify-center mb-4">
               <Image 
-                source={require('@/assets/images/react-logo.png')} 
+                source={require('@/assets/images/logo.png')} 
                 className="w-12 h-12"
                 style={{ resizeMode: 'contain' }}
               />
